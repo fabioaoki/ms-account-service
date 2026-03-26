@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "MsAccountService (Cursor + Docker Postgres)",
+      "request": "launch",
+      "mainClass": "br.com.mechanic.account.MsAccountServiceApplication",
+      "projectName": "ms-account-service",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "MS_ACCOUNT_DATASOURCE_URL": "jdbc:postgresql://localhost:5433/annotation_app",
+        "MS_ACCOUNT_DATASOURCE_USERNAME": "annotation_app",
+        "MS_ACCOUNT_DATASOURCE_PASSWORD": "1234"
+      }
+    },
+    {
+      "type": "java",
+      "name": "MsAccountService (somente application.properties)",
+      "request": "launch",
+      "mainClass": "br.com.mechanic.account.MsAccountServiceApplication",
+      "projectName": "ms-account-service",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

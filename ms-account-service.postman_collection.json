@@ -1,0 +1,145 @@
+{
+  "info": {
+    "name": "ms-account-service",
+    "description": "Collection Postman para testar: POST /api/v1/accounts e PATCH /api/v1/accounts/{accountId}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.1.0"
+  },
+  "item": [
+    {
+      "name": "Criar conta (POST /api/v1/accounts)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{passwordValid}}\",\n  \"confirmPassword\": \"{{passwordValid}}\",\n  \"firstName\": \"Fabio\",\n  \"lastName\": \"Aoki\",\n  \"birthDate\": \"{{birthDate}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function yearsAgo(years) {",
+              "  const d = new Date();",
+              "  d.setFullYear(d.getFullYear() - years);",
+              "  const yyyy = d.getFullYear();",
+              "  const mm = String(d.getMonth() + 1).padStart(2, '0');",
+              "  const dd = String(d.getDate()).padStart(2, '0');",
+              "  return `${yyyy}-${mm}-${dd}`;",
+              "}",
+              "",
+              "pm.environment.set('email', 'user-' + Date.now() + '@email.com');",
+              "pm.environment.set('birthDate', yearsAgo(25));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+              "const json = pm.response.json();",
+              "pm.environment.set('accountId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Atualizar conta (PATCH /api/v1/accounts/{accountId})",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "{{accountId}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Ana\",\n  \"lastName\": \"Silva\",\n  \"birthDate\": \"{{birthDateUpdate}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function yearsAgo(years) {",
+              "  const d = new Date();",
+              "  d.setFullYear(d.getFullYear() - years);",
+              "  const yyyy = d.getFullYear();",
+              "  const mm = String(d.getMonth() + 1).padStart(2, '0');",
+              "  const dd = String(d.getDate()).padStart(2, '0');",
+              "  return `${yyyy}-${mm}-${dd}`;",
+              "}",
+              "",
+              "pm.environment.set('birthDateUpdate', yearsAgo(30));",
+              "if (!pm.environment.get('accountId')) {",
+              "  pm.environment.set('accountId', 1);",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+              "const json = pm.response.json();",
+              "pm.test('lastUpdatedAt existe', function () { pm.expect(json.lastUpdatedAt).to.not.be.null; });"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "passwordValid",
+      "value": "secret123"
+    },
+    {
+      "key": "accountId",
+      "value": "1"
+    }
+  ]
+}
