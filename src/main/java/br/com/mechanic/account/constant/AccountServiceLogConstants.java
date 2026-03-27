@@ -35,4 +35,37 @@ public final class AccountServiceLogConstants {
 
     public static final String UPDATE_ACCOUNT_FLOW_COMPLETED =
             "Fluxo de atualizacao da conta concluido com sucesso. identificador={}";
+
+    public static final String UPDATE_ACCOUNT_REJECTED_INACTIVE_STATUS =
+            "Atualizacao da conta nao permitida: status inativo.";
+
+    public static final String LINK_PROFILE_TO_ACCOUNT_FLOW_STARTED =
+            "Fluxo de vinculo de perfil a conta iniciado. identificadorConta={} tipoPerfil={}";
+
+    public static final String LINK_PROFILE_TO_ACCOUNT_FLOW_COMPLETED =
+            "Fluxo de vinculo de perfil a conta concluido. identificadorConta={} identificadorPerfil={}";
+
+    public static final String LINK_PROFILE_TO_ACCOUNT_REJECTED_ANNOTATOR =
+            "Vinculo de perfil reprovado: ANNOTATOR nao permitido neste fluxo.";
+
+    public static final String LINK_PROFILE_TO_ACCOUNT_REJECTED_ALREADY_LINKED =
+            "Vinculo de perfil reprovado: perfil ja vinculado a conta.";
+
+    public static final String LINK_PROFILE_TO_ACCOUNT_REJECTED_ACCOUNT_NOT_ACTIVE =
+            "Vinculo de perfil reprovado: conta nao esta ACTIVE.";
+
+    public static final String UNLINK_PROFILE_FROM_ACCOUNT_FLOW_STARTED =
+            "Fluxo de desvinculo de perfil da conta iniciado. identificadorConta={} tipoPerfil={}";
+
+    public static final String UNLINK_PROFILE_FROM_ACCOUNT_FLOW_COMPLETED =
+            "Fluxo de desvinculo de perfil da conta concluido. identificadorConta={} identificadorPerfil={}";
+
+    public static final String UNLINK_PROFILE_FROM_ACCOUNT_REJECTED_ANNOTATOR =
+            "Desvinculo de perfil reprovado: ANNOTATOR nao pode ser removido.";
+
+    public static final String UNLINK_PROFILE_FROM_ACCOUNT_IDEMPOTENT_NO_BINDING =
+            "Desvinculo de perfil idempotente: vinculo ja estava ausente.";
+
+    public static final String UNLINK_PROFILE_FROM_ACCOUNT_REJECTED_ACCOUNT_NOT_ACTIVE =
+            "Desvinculo de perfil reprovado: conta nao esta ACTIVE.";
 }

@@ -2,8 +2,11 @@ package br.com.mechanic.account.entity.account;
 
 import br.com.mechanic.account.constant.EntityConstants;
 import br.com.mechanic.account.entity.profile.Profile;
+import br.com.mechanic.account.enuns.AccountHistoryActionEnum;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
@@ -48,6 +51,14 @@ public class AccountHistory {
             foreignKey = @ForeignKey(name = EntityConstants.ACCOUNT_HISTORY_PROFILE_FK_NAME)
     )
     private Profile profile;
+
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = EntityConstants.COLUMN_ACCOUNT_HISTORY_ACTION,
+            nullable = false,
+            length = EntityConstants.ACCOUNT_HISTORY_ACTION_COLUMN_LENGTH
+    )
+    private AccountHistoryActionEnum action;
 
     @Column(name = EntityConstants.COLUMN_HISTORY_CREATED_AT, nullable = false)
     private LocalDateTime createdAt;

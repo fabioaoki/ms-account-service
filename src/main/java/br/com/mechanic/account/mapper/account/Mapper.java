@@ -4,9 +4,12 @@ import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.account.AccountHistory;
 import br.com.mechanic.account.entity.account.AccountProfile;
 import br.com.mechanic.account.entity.profile.Profile;
+import br.com.mechanic.account.enuns.AccountHistoryActionEnum;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.model.account.AccountModel;
 import br.com.mechanic.account.service.request.UserCreateRequest;
+import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
+import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
 import br.com.mechanic.account.service.response.AccountUpdateResponse;
 import lombok.AccessLevel;
@@ -50,6 +53,7 @@ public final class Mapper {
                 .name(account.getName())
                 .birthDate(account.getBirthDate())
                 .profileType(profileTypeForApi)
+                .status(account.getStatus())
                 .createdAt(account.getCreatedAt())
                 .build();
     }
@@ -61,10 +65,15 @@ public final class Mapper {
                 .build();
     }
 
-    public static AccountHistory toAccountHistory(Account account, Profile profile) {
+    public static AccountHistory toAccountHistory(
+            Account account,
+            Profile profile,
+            AccountHistoryActionEnum action
+    ) {
         return AccountHistory.builder()
                 .account(account)
                 .profile(profile)
+                .action(action)
                 .build();
     }
 
@@ -74,6 +83,22 @@ public final class Mapper {
                 .name(account.getName())
                 .birthDate(account.getBirthDate())
                 .lastUpdatedAt(account.getLastUpdatedAt())
+                .build();
+    }
+
+    public static AccountProfileLinkResponse toProfileLinkResponse(Account account, Profile profile) {
+        return AccountProfileLinkResponse.builder()
+                .accountId(account.getId())
+                .profileId(profile.getId())
+                .profileType(profile.getProfileType())
+                .build();
+    }
+
+    public static AccountProfileUnlinkResponse toProfileUnlinkResponse(Account account, Profile profile) {
+        return AccountProfileUnlinkResponse.builder()
+                .accountId(account.getId())
+                .profileId(profile.getId())
+                .profileType(profile.getProfileType())
                 .build();
     }
 }

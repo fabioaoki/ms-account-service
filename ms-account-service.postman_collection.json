@@ -1,9 +1,9 @@
 {
   "info": {
     "name": "ms-account-service",
-    "description": "Collection Postman para testar: POST /api/v1/accounts e PATCH /api/v1/accounts/{accountId}.",
+    "description": "Microsservico de contas: POST/PATCH accounts, POST/DELETE .../accounts/{id}/profiles.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.1.0"
+    "version": "1.3.0"
   },
   "item": [
     {
@@ -59,7 +59,8 @@
             "exec": [
               "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
               "const json = pm.response.json();",
-              "pm.environment.set('accountId', json.id);"
+              "pm.environment.set('accountId', json.id);",
+              "pm.test('status ACTIVE', function () { pm.expect(json.status).to.eql('ACTIVE'); });"
             ]
           }
         }
@@ -126,6 +127,122 @@
           }
         }
       ]
+    },
+    {
+      "name": "Vincular perfil (POST /api/v1/accounts/{accountId}/profiles)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/profiles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "{{accountId}}",
+            "profiles"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"profileType\": \"{{profileTypeLink}}\"\n}"
+        },
+        "description": "Vincula um perfil extra (SPEAKER, BISHOP ou COACH). ANNOTATOR nao e permitido. Conta deve estar ACTIVE. Retorna 201 com accountId, profileId e profileType."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.environment.get('accountId')) {",
+              "  pm.environment.set('accountId', 1);",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+              "const json = pm.response.json();",
+              "pm.test('Resposta contem ids e tipo', function () {",
+              "  pm.expect(json.accountId).to.be.a('number');",
+              "  pm.expect(json.profileId).to.be.a('number');",
+              "  pm.expect(json.profileType).to.eql(pm.variables.get('profileTypeLink'));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Desvincular perfil (DELETE /api/v1/accounts/{accountId}/profiles)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/profiles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "accounts",
+            "{{accountId}}",
+            "profiles"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"profileType\": \"{{profileTypeUnlink}}\"\n}"
+        },
+        "description": "Remove vinculo (SPEAKER, BISHOP ou COACH). ANNOTATOR nao pode ser removido. Conta ACTIVE. Se ja nao houver vinculo, retorna 200 igual (idempotente). History com action UNLINK apenas quando removeu de fato."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.environment.get('accountId')) {",
+              "  pm.environment.set('accountId', 1);",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Resposta contem ids e tipo', function () {",
+              "  pm.expect(json.accountId).to.be.a('number');",
+              "  pm.expect(json.profileId).to.be.a('number');",
+              "  pm.expect(json.profileType).to.eql(pm.variables.get('profileTypeUnlink'));",
+              "});"
+            ]
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -140,6 +257,14 @@
     {
       "key": "accountId",
       "value": "1"
+    },
+    {
+      "key": "profileTypeLink",
+      "value": "SPEAKER"
+    },
+    {
+      "key": "profileTypeUnlink",
+      "value": "SPEAKER"
     }
   ]
 }

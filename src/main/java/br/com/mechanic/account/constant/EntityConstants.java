@@ -28,9 +28,11 @@ public final class EntityConstants {
     public static final String COLUMN_PROFILE_TYPE = "profile_type";
     public static final String COLUMN_CREATED_AT = "created_at";
     public static final String COLUMN_BIRTH_DATE = "birth_date";
+    public static final String COLUMN_STATUS = "status";
     public static final String COLUMN_ACCOUNT_ID = "account_id";
     public static final String COLUMN_PROFILE_ID = "profile_id";
     public static final String COLUMN_HISTORY_CREATED_AT = "created_at";
+    public static final String COLUMN_ACCOUNT_HISTORY_ACTION = "action";
 
     public static final int EMAIL_COLUMN_LENGTH = 254;
     public static final int NAME_COLUMN_LENGTH = 120;
@@ -38,4 +40,6 @@ public final class EntityConstants {
     public static final int LAST_NAME_COLUMN_LENGTH = 59;
     public static final int PASSWORD_HASH_COLUMN_LENGTH = 72;
     public static final int PROFILE_TYPE_COLUMN_LENGTH = 32;
+    public static final int ACCOUNT_STATUS_COLUMN_LENGTH = 32;
+    public static final int ACCOUNT_HISTORY_ACTION_COLUMN_LENGTH = 16;
 }

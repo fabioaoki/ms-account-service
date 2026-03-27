@@ -8,19 +8,13 @@
       "mainClass": "br.com.mechanic.account.MsAccountServiceApplication",
       "projectName": "ms-account-service",
       "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "shortenCommandLine": "auto",
       "env": {
         "MS_ACCOUNT_DATASOURCE_URL": "jdbc:postgresql://localhost:5433/annotation_app",
         "MS_ACCOUNT_DATASOURCE_USERNAME": "annotation_app",
         "MS_ACCOUNT_DATASOURCE_PASSWORD": "1234"
       }
-    },
-    {
-      "type": "java",
-      "name": "MsAccountService (somente application.properties)",
-      "request": "launch",
-      "mainClass": "br.com.mechanic.account.MsAccountServiceApplication",
-      "projectName": "ms-account-service",
-      "cwd": "${workspaceFolder}"
     }
   ]
 }

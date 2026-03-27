@@ -2,14 +2,19 @@ package br.com.mechanic.account.controller.account;
 
 import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.service.account.AccountServiceBO;
+import br.com.mechanic.account.service.request.AccountProfileLinkRequest;
+import br.com.mechanic.account.service.request.AccountProfileUnlinkRequest;
 import br.com.mechanic.account.service.request.AccountUpdateRequest;
 import br.com.mechanic.account.service.request.UserCreateRequest;
+import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
+import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountUpdateResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,6 +44,26 @@ public class AccountController {
             @Valid @RequestBody AccountUpdateRequest request
     ) {
         AccountUpdateResponse body = accountServiceBO.update(accountId, request);
+        return ResponseEntity.ok(body);
+    }
+
+    @PostMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_PROFILES_SEGMENT)
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<AccountProfileLinkResponse> linkProfile(
+            @PathVariable Long accountId,
+            @Valid @RequestBody AccountProfileLinkRequest request
+    ) {
+        AccountProfileLinkResponse body = accountServiceBO.linkProfileToAccount(accountId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
+    }
+
+    @DeleteMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_PROFILES_SEGMENT)
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<AccountProfileUnlinkResponse> unlinkProfile(
+            @PathVariable Long accountId,
+            @Valid @RequestBody AccountProfileUnlinkRequest request
+    ) {
+        AccountProfileUnlinkResponse body = accountServiceBO.unlinkProfileFromAccount(accountId, request);
         return ResponseEntity.ok(body);
     }
 }

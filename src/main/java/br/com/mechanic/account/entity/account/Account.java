@@ -1,8 +1,11 @@
 package br.com.mechanic.account.entity.account;
 
 import br.com.mechanic.account.constant.EntityConstants;
+import br.com.mechanic.account.enuns.AccountStatusEnum;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -47,6 +50,10 @@ public class Account {
 
     @Column(name = EntityConstants.COLUMN_BIRTH_DATE, nullable = false)
     private LocalDate birthDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = EntityConstants.COLUMN_STATUS, nullable = false, length = EntityConstants.ACCOUNT_STATUS_COLUMN_LENGTH)
+    private AccountStatusEnum status;
 
     @Column(name = EntityConstants.COLUMN_PASSWORD_HASH, nullable = false, length = EntityConstants.PASSWORD_HASH_COLUMN_LENGTH)
     private String passwordHash;

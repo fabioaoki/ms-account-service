@@ -23,5 +23,8 @@ public final class AccountUpdateValidationConstants {
 
     public static final String MESSAGE_ACCOUNT_NOT_FOUND =
             "Conta nao encontrada.";
+
+    public static final String MESSAGE_CANNOT_UPDATE_INACTIVE_ACCOUNT =
+            "Nao e permitido alterar conta com status inativo.";
 }
 

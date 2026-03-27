@@ -1,28 +1,20 @@
 package br.com.mechanic.account.service.response;
 
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
-import br.com.mechanic.account.enuns.AccountStatusEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AccountResponse {
+public class AccountProfileLinkResponse {
 
-    private Long id;
-    private String email;
-    private String name;
-    private LocalDate birthDate;
+    private Long accountId;
+    private Long profileId;
     private AccountProfileTypeEnum profileType;
-    private AccountStatusEnum status;
-    private LocalDateTime createdAt;
 }
