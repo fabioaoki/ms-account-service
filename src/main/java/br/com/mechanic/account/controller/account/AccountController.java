@@ -6,6 +6,7 @@ import br.com.mechanic.account.service.request.AccountProfileLinkRequest;
 import br.com.mechanic.account.service.request.AccountProfileUnlinkRequest;
 import br.com.mechanic.account.service.request.AccountUpdateRequest;
 import br.com.mechanic.account.service.request.UserCreateRequest;
+import br.com.mechanic.account.service.response.AccountDetailResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
 import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountUpdateResponse;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,6 +37,25 @@ public class AccountController {
     public ResponseEntity<AccountResponse> create(@Valid @RequestBody UserCreateRequest request) {
         AccountResponse body = accountServiceBO.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
+    }
+
+    @GetMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE)
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<AccountDetailResponse> getByAccountId(@PathVariable Long accountId) {
+        AccountDetailResponse body = accountServiceBO.getByAccountId(accountId);
+        return ResponseEntity.ok(body);
+    }
+
+    @PatchMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_DEACTIVATE_SEGMENT)
+    @ResponseStatus(HttpStatus.OK)
+    public void deactivateAccount(@PathVariable Long accountId) {
+        accountServiceBO.deactivateAccount(accountId);
+    }
+
+    @PatchMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_ACTIVATE_SEGMENT)
+    @ResponseStatus(HttpStatus.OK)
+    public void activateAccount(@PathVariable Long accountId) {
+        accountServiceBO.activateAccount(accountId);
     }
 
     @PatchMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE)

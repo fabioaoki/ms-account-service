@@ -68,4 +68,28 @@ public final class AccountServiceLogConstants {
 
     public static final String UNLINK_PROFILE_FROM_ACCOUNT_REJECTED_ACCOUNT_NOT_ACTIVE =
             "Desvinculo de perfil reprovado: conta nao esta ACTIVE.";
+
+    public static final String GET_ACCOUNT_BY_ID_FLOW_STARTED =
+            "Fluxo de consulta de conta por identificador iniciado. identificador={}";
+
+    public static final String GET_ACCOUNT_BY_ID_FLOW_COMPLETED =
+            "Fluxo de consulta de conta por identificador concluido. identificador={}";
+
+    public static final String DEACTIVATE_ACCOUNT_FLOW_STARTED =
+            "Fluxo de desativacao de conta iniciado. identificador={}";
+
+    public static final String DEACTIVATE_ACCOUNT_FLOW_COMPLETED =
+            "Fluxo de desativacao de conta concluido. identificador={}";
+
+    public static final String DEACTIVATE_ACCOUNT_IDEMPOTENT_ALREADY_INACTIVE =
+            "Desativacao idempotente: conta ja estava INACTIVE. identificador={}";
+
+    public static final String ACTIVATE_ACCOUNT_FLOW_STARTED =
+            "Fluxo de ativacao de conta iniciado. identificador={}";
+
+    public static final String ACTIVATE_ACCOUNT_FLOW_COMPLETED =
+            "Fluxo de ativacao de conta concluido. identificador={}";
+
+    public static final String ACTIVATE_ACCOUNT_IDEMPOTENT_ALREADY_ACTIVE =
+            "Ativacao idempotente: conta ja estava ACTIVE. identificador={}";
 }

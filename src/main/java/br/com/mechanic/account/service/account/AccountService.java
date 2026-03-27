@@ -17,11 +17,13 @@ import br.com.mechanic.account.model.account.AccountModel;
 import br.com.mechanic.account.repository.account.impl.AccountHistoryRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.AccountProfileRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.AccountRepositoryImpl;
+import br.com.mechanic.account.repository.account.impl.AccountStatusHistoryRepositoryImpl;
 import br.com.mechanic.account.repository.profile.impl.ProfileRepositoryImpl;
 import br.com.mechanic.account.service.request.AccountProfileLinkRequest;
 import br.com.mechanic.account.service.request.AccountProfileUnlinkRequest;
 import br.com.mechanic.account.service.request.UserCreateRequest;
 import br.com.mechanic.account.service.request.AccountUpdateRequest;
+import br.com.mechanic.account.service.response.AccountDetailResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
 import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
@@ -34,7 +36,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -44,6 +48,7 @@ public class AccountService implements AccountServiceBO {
 
     private final AccountRepositoryImpl accountRepository;
     private final AccountHistoryRepositoryImpl accountHistoryRepository;
+    private final AccountStatusHistoryRepositoryImpl accountStatusHistoryRepository;
     private final AccountProfileRepositoryImpl accountProfileRepository;
     private final ProfileRepositoryImpl profileRepository;
     private final PasswordEncoder passwordEncoder;
@@ -108,6 +113,51 @@ public class AccountService implements AccountServiceBO {
         AccountUpdateResponse response = Mapper.toUpdateResponse(updated);
         log.info(AccountServiceLogConstants.UPDATE_ACCOUNT_FLOW_COMPLETED, accountId);
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccountDetailResponse getByAccountId(Long accountId) {
+        log.info(AccountServiceLogConstants.GET_ACCOUNT_BY_ID_FLOW_STARTED, accountId);
+        Account account = getAccountOrThrow(accountId);
+        List<AccountProfileTypeEnum> profileTypes = accountProfileRepository.findByAccountIdOrderByIdAsc(accountId).stream()
+                .map(ap -> ap.getProfile().getProfileType())
+                .toList();
+        AccountDetailResponse response = Mapper.toAccountDetailResponse(account, profileTypes);
+        log.info(AccountServiceLogConstants.GET_ACCOUNT_BY_ID_FLOW_COMPLETED, accountId);
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public void deactivateAccount(Long accountId) {
+        log.info(AccountServiceLogConstants.DEACTIVATE_ACCOUNT_FLOW_STARTED, accountId);
+        Account account = getAccountOrThrow(accountId);
+        if (account.getStatus() == AccountStatusEnum.INACTIVE) {
+            log.info(AccountServiceLogConstants.DEACTIVATE_ACCOUNT_IDEMPOTENT_ALREADY_INACTIVE, accountId);
+            return;
+        }
+        account.setStatus(AccountStatusEnum.INACTIVE);
+        account.setLastUpdatedAt(LocalDateTime.now());
+        Account saved = accountRepository.save(account);
+        accountStatusHistoryRepository.save(Mapper.toAccountStatusHistory(saved));
+        log.info(AccountServiceLogConstants.DEACTIVATE_ACCOUNT_FLOW_COMPLETED, accountId);
+    }
+
+    @Override
+    @Transactional
+    public void activateAccount(Long accountId) {
+        log.info(AccountServiceLogConstants.ACTIVATE_ACCOUNT_FLOW_STARTED, accountId);
+        Account account = getAccountOrThrow(accountId);
+        if (account.getStatus() == AccountStatusEnum.ACTIVE) {
+            log.info(AccountServiceLogConstants.ACTIVATE_ACCOUNT_IDEMPOTENT_ALREADY_ACTIVE, accountId);
+            return;
+        }
+        account.setStatus(AccountStatusEnum.ACTIVE);
+        account.setLastUpdatedAt(LocalDateTime.now());
+        Account saved = accountRepository.save(account);
+        accountStatusHistoryRepository.save(Mapper.toAccountStatusHistory(saved));
+        log.info(AccountServiceLogConstants.ACTIVATE_ACCOUNT_FLOW_COMPLETED, accountId);
     }
 
     @Override

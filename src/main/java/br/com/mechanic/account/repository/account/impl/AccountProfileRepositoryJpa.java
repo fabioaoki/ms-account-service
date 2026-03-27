@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 public class AccountProfileRepositoryJpa implements AccountProfileRepositoryImpl {
@@ -32,5 +33,10 @@ public class AccountProfileRepositoryJpa implements AccountProfileRepositoryImpl
     @Override
     public void deleteByAccountIdAndProfileType(Long accountId, AccountProfileTypeEnum profileType) {
         repository.deleteByAccount_IdAndProfile_ProfileType(accountId, profileType);
+    }
+
+    @Override
+    public List<AccountProfile> findByAccountIdOrderByIdAsc(Long accountId) {
+        return repository.findByAccount_IdOrderByIdAsc(accountId);
     }
 }

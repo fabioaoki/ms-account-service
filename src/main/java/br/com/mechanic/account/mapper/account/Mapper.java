@@ -3,11 +3,13 @@ package br.com.mechanic.account.mapper.account;
 import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.account.AccountHistory;
 import br.com.mechanic.account.entity.account.AccountProfile;
+import br.com.mechanic.account.entity.account.AccountStatusHistory;
 import br.com.mechanic.account.entity.profile.Profile;
 import br.com.mechanic.account.enuns.AccountHistoryActionEnum;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.model.account.AccountModel;
 import br.com.mechanic.account.service.request.UserCreateRequest;
+import br.com.mechanic.account.service.response.AccountDetailResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
 import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
@@ -15,6 +17,8 @@ import br.com.mechanic.account.service.response.AccountUpdateResponse;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Mapper {
@@ -83,6 +87,27 @@ public final class Mapper {
                 .name(account.getName())
                 .birthDate(account.getBirthDate())
                 .lastUpdatedAt(account.getLastUpdatedAt())
+                .build();
+    }
+
+    public static AccountDetailResponse toAccountDetailResponse(
+            Account account,
+            List<AccountProfileTypeEnum> profileTypes
+    ) {
+        return new AccountDetailResponse(
+                account.getId(),
+                account.getName(),
+                account.getBirthDate(),
+                account.getCreatedAt(),
+                account.getStatus(),
+                List.copyOf(profileTypes)
+        );
+    }
+
+    public static AccountStatusHistory toAccountStatusHistory(Account account) {
+        return AccountStatusHistory.builder()
+                .account(account)
+                .status(account.getStatus())
                 .build();
     }
 

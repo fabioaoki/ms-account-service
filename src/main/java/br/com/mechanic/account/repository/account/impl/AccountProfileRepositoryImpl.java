@@ -3,6 +3,8 @@ package br.com.mechanic.account.repository.account.impl;
 import br.com.mechanic.account.entity.account.AccountProfile;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 
+import java.util.List;
+
 public interface AccountProfileRepositoryImpl {
 
     AccountProfile save(AccountProfile accountProfile);
@@ -10,4 +12,6 @@ public interface AccountProfileRepositoryImpl {
     boolean existsByAccountIdAndProfileType(Long accountId, AccountProfileTypeEnum profileType);
 
     void deleteByAccountIdAndProfileType(Long accountId, AccountProfileTypeEnum profileType);
+
+    List<AccountProfile> findByAccountIdOrderByIdAsc(Long accountId);
 }

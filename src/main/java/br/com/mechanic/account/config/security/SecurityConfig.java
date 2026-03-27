@@ -28,6 +28,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.DELETE, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_PROFILES_ANT_PATTERN)
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_GET_ANT_PATTERN)
+                        .permitAll()
                         .requestMatchers(HttpMethod.PATCH, ApiPathConstants.ACCOUNTS_WITH_ID_WILDCARD_PATH).permitAll()
                         .requestMatchers(
                                 SecurityPathConstants.SWAGGER_UI_PATTERN,

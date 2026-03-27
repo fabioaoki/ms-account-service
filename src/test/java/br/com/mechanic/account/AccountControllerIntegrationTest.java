@@ -7,19 +7,24 @@ import br.com.mechanic.account.constant.AuthValidationConstants;
 import br.com.mechanic.account.constant.AccountUpdateValidationConstants;
 import br.com.mechanic.account.constant.ExceptionMessageConstants;
 import br.com.mechanic.account.entity.account.Account;
+import br.com.mechanic.account.entity.account.AccountStatusHistory;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.AccountStatusEnum;
 import br.com.mechanic.account.repository.account.AccountHistoryRepository;
 import br.com.mechanic.account.repository.account.AccountProfileRepository;
+import br.com.mechanic.account.repository.account.AccountStatusHistoryRepository;
+import br.com.mechanic.account.repository.account.impl.AccountStatusHistoryRepositoryJpa;
 import br.com.mechanic.account.repository.account.jpa.AccountRepositoryJpa;
 import br.com.mechanic.account.repository.profile.ProfileRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,7 +33,14 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -54,9 +66,20 @@ class AccountControllerIntegrationTest {
     private AccountHistoryRepository accountHistoryRepository;
 
     @Autowired
+    private AccountStatusHistoryRepository accountStatusHistoryRepository;
+
+    @SpyBean
+    private AccountStatusHistoryRepositoryJpa accountStatusHistoryRepositoryJpa;
+
+    @Autowired
     private ProfileRepository profileRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @AfterEach
+    void resetAccountStatusHistoryRepositorySpy() {
+        reset(accountStatusHistoryRepositoryJpa);
+    }
 
     @Test
     @DisplayName("POST /api/v1/accounts retorna 201 com perfil ANNOTATOR e nome formatado")
@@ -76,6 +99,152 @@ class AccountControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(AccountStatusEnum.ACTIVE.name()))
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.createdAt").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/accounts nao grava em account_status_history")
+    void createAccountDoesNotPersistAccountStatusHistoryRow() throws Exception {
+        String email = "nohist-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+
+        assertEquals(0L, accountStatusHistoryRepository.countByAccount_Id(accountId));
+        verify(accountStatusHistoryRepositoryJpa, never()).save(any(AccountStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/accounts/{accountId} retorna nome, birthDate, accountId, createdAt, status e profileTypes")
+    void getAccountByIdReturnsDetailWithLinkedProfiles() throws Exception {
+        String email = "get-" + UUID.randomUUID() + "@email.com";
+        LocalDate birthDate = LocalDate.now().minusYears(25);
+        Long accountId = createAccountAndGetId(email, "fabio", "de carvalho", birthDate);
+
+        mockMvc.perform(get(ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountId").value(accountId))
+                .andExpect(jsonPath("$.name").value("Fabio de Carvalho"))
+                .andExpect(jsonPath("$.birthDate").value(birthDate.toString()))
+                .andExpect(jsonPath("$.createdAt").exists())
+                .andExpect(jsonPath("$.status").value(AccountStatusEnum.ACTIVE.name()))
+                .andExpect(jsonPath("$.profileTypes.length()").value(1))
+                .andExpect(jsonPath("$.profileTypes[0]").value(AccountProfileTypeEnum.ANNOTATOR.name()));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/accounts/{accountId} apos vincular SPEAKER retorna perfis na ordem de vinculo")
+    void getAccountByIdReturnsProfileTypesInLinkOrder() throws Exception {
+        String email = "get2-" + UUID.randomUUID() + "@email.com";
+        LocalDate birthDate = LocalDate.now().minusYears(28);
+        Long accountId = createAccountAndGetId(email, "ana", "silva", birthDate);
+
+        mockMvc.perform(
+                        post(accountProfilesPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildLinkProfileJson(AccountProfileTypeEnum.SPEAKER))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get(ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(AccountStatusEnum.ACTIVE.name()))
+                .andExpect(jsonPath("$.profileTypes.length()").value(2))
+                .andExpect(jsonPath("$.profileTypes[0]").value(AccountProfileTypeEnum.ANNOTATOR.name()))
+                .andExpect(jsonPath("$.profileTypes[1]").value(AccountProfileTypeEnum.SPEAKER.name()));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/accounts/{accountId} com id inexistente retorna 400")
+    void getAccountByIdWithNonExistingIdReturnsBadRequest() throws Exception {
+        mockMvc.perform(get(ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + 999999L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AccountUpdateValidationConstants.MESSAGE_ACCOUNT_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("PATCH .../deactivate com conta ACTIVE retorna 200 sem corpo e persiste INACTIVE")
+    void deactivateActiveAccountReturnsOkAndSetsInactive() throws Exception {
+        String email = "deact-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+
+        mockMvc.perform(patch(accountDeactivatePath(accountId)))
+                .andExpect(status().isOk());
+
+        assertEquals(
+                AccountStatusEnum.INACTIVE,
+                accountRepositoryJpa.findById(accountId).orElseThrow().getStatus());
+
+        verify(accountStatusHistoryRepositoryJpa, times(1)).save(argThat(history ->
+                history.getAccount().getId().equals(accountId)
+                        && history.getStatus() == AccountStatusEnum.INACTIVE));
+    }
+
+    @Test
+    @DisplayName("PATCH .../deactivate com conta ja INACTIVE retorna 200 (idempotente)")
+    void deactivateAlreadyInactiveReturnsOkIdempotent() throws Exception {
+        String email = "deact2-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+
+        mockMvc.perform(patch(accountDeactivatePath(accountId))).andExpect(status().isOk());
+        mockMvc.perform(patch(accountDeactivatePath(accountId))).andExpect(status().isOk());
+
+        assertEquals(
+                AccountStatusEnum.INACTIVE,
+                accountRepositoryJpa.findById(accountId).orElseThrow().getStatus());
+
+        verify(accountStatusHistoryRepositoryJpa, times(1)).save(any(AccountStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("PATCH .../activate com conta INACTIVE retorna 200 sem corpo e persiste ACTIVE")
+    void activateInactiveAccountReturnsOkAndSetsActive() throws Exception {
+        String email = "act-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+
+        mockMvc.perform(patch(accountDeactivatePath(accountId))).andExpect(status().isOk());
+
+        mockMvc.perform(patch(accountActivatePath(accountId))).andExpect(status().isOk());
+
+        assertEquals(
+                AccountStatusEnum.ACTIVE,
+                accountRepositoryJpa.findById(accountId).orElseThrow().getStatus());
+
+        verify(accountStatusHistoryRepositoryJpa, times(2)).save(any(AccountStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("PATCH .../activate com conta ja ACTIVE retorna 200 (idempotente)")
+    void activateAlreadyActiveReturnsOkIdempotent() throws Exception {
+        String email = "act2-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+
+        mockMvc.perform(patch(accountActivatePath(accountId))).andExpect(status().isOk());
+
+        mockMvc.perform(patch(accountActivatePath(accountId))).andExpect(status().isOk());
+
+        assertEquals(
+                AccountStatusEnum.ACTIVE,
+                accountRepositoryJpa.findById(accountId).orElseThrow().getStatus());
+
+        verify(accountStatusHistoryRepositoryJpa, never()).save(any(AccountStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("PATCH .../deactivate com id inexistente retorna 400")
+    void deactivateNonExistingAccountReturnsBadRequest() throws Exception {
+        mockMvc.perform(patch(accountDeactivatePath(999999L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AccountUpdateValidationConstants.MESSAGE_ACCOUNT_NOT_FOUND));
+
+        verify(accountStatusHistoryRepositoryJpa, never()).save(any(AccountStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("PATCH .../activate com id inexistente retorna 400")
+    void activateNonExistingAccountReturnsBadRequest() throws Exception {
+        mockMvc.perform(patch(accountActivatePath(999999L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AccountUpdateValidationConstants.MESSAGE_ACCOUNT_NOT_FOUND));
+
+        verify(accountStatusHistoryRepositoryJpa, never()).save(any(AccountStatusHistory.class));
     }
 
     @Test
@@ -680,6 +849,14 @@ class AccountControllerIntegrationTest {
 
     private static String accountProfilesPath(Long accountId) {
         return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.ACCOUNT_PROFILES_SEGMENT;
+    }
+
+    private static String accountDeactivatePath(Long accountId) {
+        return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.ACCOUNT_DEACTIVATE_SEGMENT;
+    }
+
+    private static String accountActivatePath(Long accountId) {
+        return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.ACCOUNT_ACTIVATE_SEGMENT;
     }
 
     private static String buildLinkProfileJson(AccountProfileTypeEnum profileType) {

@@ -10,12 +10,14 @@ public final class EntityConstants {
     public static final String PROFILE_TABLE_NAME = "profile";
     public static final String ACCOUNT_PROFILE_TABLE_NAME = "account_profile";
     public static final String ACCOUNT_HISTORY_TABLE_NAME = "account_history";
+    public static final String ACCOUNT_STATUS_HISTORY_TABLE_NAME = "account_status_history";
 
     public static final String ACCOUNT_EMAIL_UK = "uk_account_email";
     public static final String PROFILE_TYPE_UK = "uk_profile_type";
 
     public static final String ACCOUNT_HISTORY_ACCOUNT_FK_NAME = "fk_account_history_account";
     public static final String ACCOUNT_HISTORY_PROFILE_FK_NAME = "fk_account_history_profile";
+    public static final String ACCOUNT_STATUS_HISTORY_ACCOUNT_FK_NAME = "fk_account_status_history_account";
     public static final String ACCOUNT_PROFILE_ACCOUNT_FK_NAME = "fk_account_profile_account";
     public static final String ACCOUNT_PROFILE_PROFILE_FK_NAME = "fk_account_profile_profile";
 
@@ -33,6 +35,7 @@ public final class EntityConstants {
     public static final String COLUMN_PROFILE_ID = "profile_id";
     public static final String COLUMN_HISTORY_CREATED_AT = "created_at";
     public static final String COLUMN_ACCOUNT_HISTORY_ACTION = "action";
+    public static final String COLUMN_ACCOUNT_STATUS_HISTORY_OCCURRED_AT = "occurred_at";
 
     public static final int EMAIL_COLUMN_LENGTH = 254;
     public static final int NAME_COLUMN_LENGTH = 120;

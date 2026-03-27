@@ -3,6 +3,7 @@ package br.com.mechanic.account.service.account;
 import br.com.mechanic.account.service.request.AccountProfileLinkRequest;
 import br.com.mechanic.account.service.request.AccountProfileUnlinkRequest;
 import br.com.mechanic.account.service.request.UserCreateRequest;
+import br.com.mechanic.account.service.response.AccountDetailResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
 import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
@@ -18,4 +19,10 @@ public interface AccountServiceBO {
     AccountProfileLinkResponse linkProfileToAccount(Long accountId, AccountProfileLinkRequest request);
 
     AccountProfileUnlinkResponse unlinkProfileFromAccount(Long accountId, AccountProfileUnlinkRequest request);
+
+    AccountDetailResponse getByAccountId(Long accountId);
+
+    void deactivateAccount(Long accountId);
+
+    void activateAccount(Long accountId);
 }
