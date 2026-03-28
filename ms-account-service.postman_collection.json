@@ -1,386 +1,464 @@
 {
   "info": {
     "name": "ms-account-service",
-    "description": "Microsservico de contas: GET/POST/PATCH /api/v1/accounts, PATCH .../deactivate e .../activate, POST/DELETE .../accounts/{id}/profiles.",
+    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.5.1"
+    "version": "1.7.0"
   },
   "item": [
     {
-      "name": "Criar conta (POST /api/v1/accounts)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/accounts",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "accounts"
+      "name": "AccountController",
+      "description": "br.com.mechanic.account.controller.account.AccountController — cadastro, consulta, ativacao, atualizacao e vinculo de perfis.",
+      "item": [
+        {
+          "name": "Criar conta (POST /api/v1/accounts)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{passwordValid}}\",\n  \"confirmPassword\": \"{{passwordValid}}\",\n  \"firstName\": \"Fabio\",\n  \"lastName\": \"Aoki\",\n  \"birthDate\": \"{{birthDate}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function yearsAgo(years) {",
+                  "  const d = new Date();",
+                  "  d.setFullYear(d.getFullYear() - years);",
+                  "  const yyyy = d.getFullYear();",
+                  "  const mm = String(d.getMonth() + 1).padStart(2, '0');",
+                  "  const dd = String(d.getDate()).padStart(2, '0');",
+                  "  return `${yyyy}-${mm}-${dd}`;",
+                  "}",
+                  "",
+                  "pm.environment.set('email', 'user-' + Date.now() + '@email.com');",
+                  "pm.environment.set('birthDate', yearsAgo(25));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('accountId', json.id);",
+                  "pm.test('status ACTIVE', function () { pm.expect(json.status).to.eql('ACTIVE'); });"
+                ]
+              }
+            }
           ]
         },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{passwordValid}}\",\n  \"confirmPassword\": \"{{passwordValid}}\",\n  \"firstName\": \"Fabio\",\n  \"lastName\": \"Aoki\",\n  \"birthDate\": \"{{birthDate}}\"\n}"
-        }
-      },
-      "event": [
         {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "function yearsAgo(years) {",
-              "  const d = new Date();",
-              "  d.setFullYear(d.getFullYear() - years);",
-              "  const yyyy = d.getFullYear();",
-              "  const mm = String(d.getMonth() + 1).padStart(2, '0');",
-              "  const dd = String(d.getDate()).padStart(2, '0');",
-              "  return `${yyyy}-${mm}-${dd}`;",
-              "}",
-              "",
-              "pm.environment.set('email', 'user-' + Date.now() + '@email.com');",
-              "pm.environment.set('birthDate', yearsAgo(25));"
-            ]
-          }
+          "name": "Consultar conta (GET /api/v1/accounts/{accountId})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}"
+              ]
+            },
+            "description": "Retorna accountId, name, birthDate, createdAt, status (ACTIVE ou INACTIVE) e profileTypes vinculados (ordem pelo id do account_profile). Conta inexistente: 400."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Campos principais', function () {",
+                  "  pm.expect(json.accountId).to.be.a('number');",
+                  "  pm.expect(json.name).to.be.a('string');",
+                  "  pm.expect(json.birthDate).to.be.a('string');",
+                  "  pm.expect(json.createdAt).to.be.a('string');",
+                  "  pm.expect(['ACTIVE', 'INACTIVE']).to.include(json.status);",
+                  "  pm.expect(json.profileTypes).to.be.an('array');",
+                  "  pm.expect(json.profileTypes.length).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
-              "const json = pm.response.json();",
-              "pm.environment.set('accountId', json.id);",
-              "pm.test('status ACTIVE', function () { pm.expect(json.status).to.eql('ACTIVE'); });"
-            ]
-          }
+          "name": "Desativar conta (PATCH /api/v1/accounts/{accountId}/deactivate)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "deactivate"
+              ]
+            },
+            "description": "Define status INACTIVE. Sem corpo na requisicao nem na resposta (apenas 200). Idempotente: se ja INACTIVE, 200. Conta inexistente: 400."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "pm.test('Sem corpo JSON', function () { pm.expect(pm.response.text()).to.eql(''); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ativar conta (PATCH /api/v1/accounts/{accountId}/activate)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "activate"
+              ]
+            },
+            "description": "Define status ACTIVE. Sem corpo na requisicao nem na resposta (apenas 200). Idempotente: se ja ACTIVE, 200. Conta inexistente: 400."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "pm.test('Sem corpo JSON', function () { pm.expect(pm.response.text()).to.eql(''); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar conta (PATCH /api/v1/accounts/{accountId})",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ana\",\n  \"lastName\": \"Silva\",\n  \"birthDate\": \"{{birthDateUpdate}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function yearsAgo(years) {",
+                  "  const d = new Date();",
+                  "  d.setFullYear(d.getFullYear() - years);",
+                  "  const yyyy = d.getFullYear();",
+                  "  const mm = String(d.getMonth() + 1).padStart(2, '0');",
+                  "  const dd = String(d.getDate()).padStart(2, '0');",
+                  "  return `${yyyy}-${mm}-${dd}`;",
+                  "}",
+                  "",
+                  "pm.environment.set('birthDateUpdate', yearsAgo(30));",
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('lastUpdatedAt existe', function () { pm.expect(json.lastUpdatedAt).to.not.be.null; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vincular perfil (POST /api/v1/accounts/{accountId}/profiles)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "profiles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileType\": \"{{profileTypeLink}}\"\n}"
+            },
+            "description": "Vincula um perfil extra (SPEAKER, BISHOP ou COACH). ANNOTATOR nao e permitido. Conta deve estar ACTIVE. Retorna 201 com accountId, profileId e profileType."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Resposta contem ids e tipo', function () {",
+                  "  pm.expect(json.accountId).to.be.a('number');",
+                  "  pm.expect(json.profileId).to.be.a('number');",
+                  "  pm.expect(json.profileType).to.eql(pm.variables.get('profileTypeLink'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desvincular perfil (DELETE /api/v1/accounts/{accountId}/profiles)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "profiles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileType\": \"{{profileTypeUnlink}}\"\n}"
+            },
+            "description": "Remove vinculo (SPEAKER, BISHOP ou COACH). ANNOTATOR nao pode ser removido. Conta ACTIVE. Se ja nao houver vinculo, retorna 200 igual (idempotente). History com action UNLINK apenas quando removeu de fato."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Resposta contem ids e tipo', function () {",
+                  "  pm.expect(json.accountId).to.be.a('number');",
+                  "  pm.expect(json.profileId).to.be.a('number');",
+                  "  pm.expect(json.profileType).to.eql(pm.variables.get('profileTypeUnlink'));",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     {
-      "name": "Consultar conta (GET /api/v1/accounts/{accountId})",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "accounts",
-            "{{accountId}}"
+      "name": "TopicController",
+      "description": "br.com.mechanic.account.controller.topic.TopicController — criacao de topicos (apos vincular perfil nao-ANNOTATOR em AccountController).",
+      "item": [
+        {
+          "name": "Criar topico (POST /api/v1/accounts/{accountId}/topics)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tema\": \"{{topicTema}}\",\n  \"contexto\": \"{{topicContexto}}\",\n  \"profile_type\": \"{{profileTypeLink}}\"\n}"
+            },
+            "description": "Cria registro na tabela topic. Requisitos: conta ACTIVE; profile_type diferente de ANNOTATOR; deve existir linha em account_profile para esta conta com o mesmo tipo (execute antes em AccountController: Vincular perfil com o mesmo profileTypeLink). tema obrigatorio (minimo 2 caracteres apos trim); contexto opcional. Resposta 201: id, accountId, tema, contexto, createdAt, lastUpdatedAt, status OPEN, profile_type."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.collectionVariables.get('topicTema')) {",
+                  "  pm.collectionVariables.set('topicTema', 'Topico de exemplo via Postman');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Topico OPEN e ids', function () {",
+                  "  pm.expect(json.id).to.be.a('number');",
+                  "  pm.expect(json.accountId).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.status).to.eql('OPEN');",
+                  "  pm.expect(json.profile_type).to.eql(pm.variables.get('profileTypeLink'));",
+                  "  pm.expect(json.tema).to.be.a('string');",
+                  "  pm.expect(json.createdAt).to.be.a('string');",
+                  "  pm.expect(json.lastUpdatedAt).to.be.a('string');",
+                  "});",
+                  "pm.environment.set('topicId', json.id);"
+                ]
+              }
+            }
           ]
-        },
-        "description": "Retorna accountId, name, birthDate, createdAt, status (ACTIVE ou INACTIVE) e profileTypes vinculados (ordem pelo id do account_profile). Conta inexistente: 400."
-      },
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "if (!pm.environment.get('accountId')) {",
-              "  pm.environment.set('accountId', 1);",
-              "}"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
-              "const json = pm.response.json();",
-              "pm.test('Campos principais', function () {",
-              "  pm.expect(json.accountId).to.be.a('number');",
-              "  pm.expect(json.name).to.be.a('string');",
-              "  pm.expect(json.birthDate).to.be.a('string');",
-              "  pm.expect(json.createdAt).to.be.a('string');",
-              "  pm.expect(['ACTIVE', 'INACTIVE']).to.include(json.status);",
-              "  pm.expect(json.profileTypes).to.be.an('array');",
-              "  pm.expect(json.profileTypes.length).to.be.at.least(1);",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Desativar conta (PATCH /api/v1/accounts/{accountId}/deactivate)",
-      "request": {
-        "method": "PATCH",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/deactivate",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "accounts",
-            "{{accountId}}",
-            "deactivate"
-          ]
-        },
-        "description": "Define status INACTIVE. Sem corpo na requisicao nem na resposta (apenas 200). Idempotente: se ja INACTIVE, 200. Conta inexistente: 400."
-      },
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "if (!pm.environment.get('accountId')) {",
-              "  pm.environment.set('accountId', 1);",
-              "}"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
-              "pm.test('Sem corpo JSON', function () { pm.expect(pm.response.text()).to.eql(''); });"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Ativar conta (PATCH /api/v1/accounts/{accountId}/activate)",
-      "request": {
-        "method": "PATCH",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/activate",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "accounts",
-            "{{accountId}}",
-            "activate"
-          ]
-        },
-        "description": "Define status ACTIVE. Sem corpo na requisicao nem na resposta (apenas 200). Idempotente: se ja ACTIVE, 200. Conta inexistente: 400."
-      },
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "if (!pm.environment.get('accountId')) {",
-              "  pm.environment.set('accountId', 1);",
-              "}"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
-              "pm.test('Sem corpo JSON', function () { pm.expect(pm.response.text()).to.eql(''); });"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Atualizar conta (PATCH /api/v1/accounts/{accountId})",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "accounts",
-            "{{accountId}}"
-          ]
-        },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"firstName\": \"Ana\",\n  \"lastName\": \"Silva\",\n  \"birthDate\": \"{{birthDateUpdate}}\"\n}"
-        }
-      },
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "function yearsAgo(years) {",
-              "  const d = new Date();",
-              "  d.setFullYear(d.getFullYear() - years);",
-              "  const yyyy = d.getFullYear();",
-              "  const mm = String(d.getMonth() + 1).padStart(2, '0');",
-              "  const dd = String(d.getDate()).padStart(2, '0');",
-              "  return `${yyyy}-${mm}-${dd}`;",
-              "}",
-              "",
-              "pm.environment.set('birthDateUpdate', yearsAgo(30));",
-              "if (!pm.environment.get('accountId')) {",
-              "  pm.environment.set('accountId', 1);",
-              "}"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
-              "const json = pm.response.json();",
-              "pm.test('lastUpdatedAt existe', function () { pm.expect(json.lastUpdatedAt).to.not.be.null; });"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Vincular perfil (POST /api/v1/accounts/{accountId}/profiles)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/profiles",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "accounts",
-            "{{accountId}}",
-            "profiles"
-          ]
-        },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"profileType\": \"{{profileTypeLink}}\"\n}"
-        },
-        "description": "Vincula um perfil extra (SPEAKER, BISHOP ou COACH). ANNOTATOR nao e permitido. Conta deve estar ACTIVE. Retorna 201 com accountId, profileId e profileType."
-      },
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "if (!pm.environment.get('accountId')) {",
-              "  pm.environment.set('accountId', 1);",
-              "}"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
-              "const json = pm.response.json();",
-              "pm.test('Resposta contem ids e tipo', function () {",
-              "  pm.expect(json.accountId).to.be.a('number');",
-              "  pm.expect(json.profileId).to.be.a('number');",
-              "  pm.expect(json.profileType).to.eql(pm.variables.get('profileTypeLink'));",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Desvincular perfil (DELETE /api/v1/accounts/{accountId}/profiles)",
-      "request": {
-        "method": "DELETE",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/profiles",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "v1",
-            "accounts",
-            "{{accountId}}",
-            "profiles"
-          ]
-        },
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"profileType\": \"{{profileTypeUnlink}}\"\n}"
-        },
-        "description": "Remove vinculo (SPEAKER, BISHOP ou COACH). ANNOTATOR nao pode ser removido. Conta ACTIVE. Se ja nao houver vinculo, retorna 200 igual (idempotente). History com action UNLINK apenas quando removeu de fato."
-      },
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "if (!pm.environment.get('accountId')) {",
-              "  pm.environment.set('accountId', 1);",
-              "}"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
-              "const json = pm.response.json();",
-              "pm.test('Resposta contem ids e tipo', function () {",
-              "  pm.expect(json.accountId).to.be.a('number');",
-              "  pm.expect(json.profileId).to.be.a('number');",
-              "  pm.expect(json.profileType).to.eql(pm.variables.get('profileTypeUnlink'));",
-              "});"
-            ]
-          }
         }
       ]
     }
@@ -405,6 +483,14 @@
     {
       "key": "profileTypeUnlink",
       "value": "SPEAKER"
+    },
+    {
+      "key": "topicTema",
+      "value": "Topico de exemplo via Postman"
+    },
+    {
+      "key": "topicContexto",
+      "value": "Contexto opcional do topico"
     }
   ]
 }

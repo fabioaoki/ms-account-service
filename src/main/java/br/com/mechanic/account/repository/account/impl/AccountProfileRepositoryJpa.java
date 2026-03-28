@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class AccountProfileRepositoryJpa implements AccountProfileRepositoryImpl {
@@ -23,6 +24,11 @@ public class AccountProfileRepositoryJpa implements AccountProfileRepositoryImpl
     public AccountProfile save(AccountProfile accountProfile) {
         accountProfile.setCreatedAt(LocalDateTime.now());
         return repository.save(accountProfile);
+    }
+
+    @Override
+    public Optional<AccountProfile> findByAccountIdAndProfileType(Long accountId, AccountProfileTypeEnum profileType) {
+        return repository.findByAccount_IdAndProfile_ProfileType(accountId, profileType);
     }
 
     @Override

@@ -14,12 +14,17 @@ public final class ApiPathConstants {
 
     public static final String ACCOUNT_PROFILES_SEGMENT = "/profiles";
 
+    public static final String TOPICS_SEGMENT = "/topics";
+
     public static final String ACCOUNT_DEACTIVATE_SEGMENT = "/deactivate";
 
     public static final String ACCOUNT_ACTIVATE_SEGMENT = "/activate";
 
     public static final String ACCOUNTS_ACCOUNT_ID_PROFILES_ANT_PATTERN =
             ACCOUNTS_BASE_PATH + "/*/profiles";
+
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topics";
 
     /**
      * Um segmento após {@code /accounts} (ex.: {@code /api/v1/accounts/1}), sem corresponder a {@code .../profiles}.
