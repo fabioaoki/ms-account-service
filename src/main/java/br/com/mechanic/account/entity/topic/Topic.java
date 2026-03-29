@@ -45,8 +45,8 @@ public class Topic {
     )
     private Account account;
 
-    @Column(name = EntityConstants.COLUMN_TEMA, nullable = false, length = EntityConstants.TOPIC_TEMA_COLUMN_LENGTH)
-    private String tema;
+    @Column(name = EntityConstants.COLUMN_TITLE, nullable = false, length = EntityConstants.TOPIC_TITLE_COLUMN_LENGTH)
+    private String title;
 
     @Column(name = EntityConstants.COLUMN_TOPIC_CONTEXT, nullable = true, length = EntityConstants.TOPIC_CONTEXT_COLUMN_LENGTH)
     private String context;
@@ -54,12 +54,15 @@ public class Topic {
     @Column(name = EntityConstants.COLUMN_CREATED_AT, nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = EntityConstants.COLUMN_LAST_UPDATED_AT, nullable = false)
+    @Column(name = EntityConstants.COLUMN_LAST_UPDATED_AT, nullable = true)
     private LocalDateTime lastUpdatedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = EntityConstants.COLUMN_TOPIC_STATUS, nullable = false, length = EntityConstants.TOPIC_STATUS_COLUMN_LENGTH)
+    @Column(name = EntityConstants.COLUMN_TOPIC_STATUS, nullable = true, length = EntityConstants.TOPIC_STATUS_COLUMN_LENGTH)
     private TopicStatusEnum status;
+
+    @Column(name = EntityConstants.COLUMN_TOPIC_END_DATE, nullable = true)
+    private LocalDateTime endDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = EntityConstants.COLUMN_PROFILE_TYPE, nullable = false, length = EntityConstants.PROFILE_TYPE_COLUMN_LENGTH)

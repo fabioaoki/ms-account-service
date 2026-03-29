@@ -8,7 +8,6 @@ import br.com.mechanic.account.service.request.AccountUpdateRequest;
 import br.com.mechanic.account.service.request.UserCreateRequest;
 import br.com.mechanic.account.service.response.AccountDetailResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
-import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountUpdateResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
 import jakarta.validation.Valid;
@@ -80,11 +79,10 @@ public class AccountController {
 
     @DeleteMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_PROFILES_SEGMENT)
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<AccountProfileUnlinkResponse> unlinkProfile(
+    public void unlinkProfile(
             @PathVariable Long accountId,
             @Valid @RequestBody AccountProfileUnlinkRequest request
     ) {
-        AccountProfileUnlinkResponse body = accountServiceBO.unlinkProfileFromAccount(accountId, request);
-        return ResponseEntity.ok(body);
+        accountServiceBO.unlinkProfileFromAccount(accountId, request);
     }
 }

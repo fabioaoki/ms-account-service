@@ -1,5 +1,6 @@
 package br.com.mechanic.account.service.response;
 
+import br.com.mechanic.account.constant.TopicCreateRequestJsonConstants;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -11,14 +12,16 @@ import java.time.LocalDateTime;
 public record TopicResponse(
         Long id,
         Long accountId,
-        String tema,
-        @JsonProperty("contexto")
-        String contexto,
+        String title,
+        @JsonProperty(TopicCreateRequestJsonConstants.CONTEXT)
+        String context,
         LocalDateTime createdAt,
-        @JsonProperty("lastUpdatedAt")
+        @JsonProperty(TopicCreateRequestJsonConstants.LAST_UPDATED_AT)
         LocalDateTime lastUpdatedAt,
+        @JsonProperty(TopicCreateRequestJsonConstants.END_DATE)
+        LocalDateTime endDate,
         TopicStatusEnum status,
-        @JsonProperty("profile_type")
+        @JsonProperty(TopicCreateRequestJsonConstants.PROFILE_TYPE)
         AccountProfileTypeEnum profileType
 ) {
 }

@@ -25,7 +25,6 @@ import br.com.mechanic.account.service.request.UserCreateRequest;
 import br.com.mechanic.account.service.request.AccountUpdateRequest;
 import br.com.mechanic.account.service.response.AccountDetailResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
-import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
 import br.com.mechanic.account.service.response.AccountUpdateResponse;
 import br.com.mechanic.account.util.FullNameFormatter;
@@ -193,7 +192,7 @@ public class AccountService implements AccountServiceBO {
 
     @Override
     @Transactional
-    public AccountProfileUnlinkResponse unlinkProfileFromAccount(Long accountId, AccountProfileUnlinkRequest request) {
+    public void unlinkProfileFromAccount(Long accountId, AccountProfileUnlinkRequest request) {
         log.info(
                 AccountServiceLogConstants.UNLINK_PROFILE_FROM_ACCOUNT_FLOW_STARTED,
                 accountId,
@@ -219,7 +218,6 @@ public class AccountService implements AccountServiceBO {
         } else {
             log.info(AccountServiceLogConstants.UNLINK_PROFILE_FROM_ACCOUNT_IDEMPOTENT_NO_BINDING);
         }
-        return Mapper.toProfileUnlinkResponse(account, profile);
     }
 
     private void assertAccountActiveForProfileBinding(Account account, Runnable logNotActiveWarning) {

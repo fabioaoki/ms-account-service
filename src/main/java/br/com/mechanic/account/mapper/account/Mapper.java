@@ -11,7 +11,6 @@ import br.com.mechanic.account.model.account.AccountModel;
 import br.com.mechanic.account.service.request.UserCreateRequest;
 import br.com.mechanic.account.service.response.AccountDetailResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
-import br.com.mechanic.account.service.response.AccountProfileUnlinkResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
 import br.com.mechanic.account.service.response.AccountUpdateResponse;
 import lombok.AccessLevel;
@@ -119,11 +118,4 @@ public final class Mapper {
                 .build();
     }
 
-    public static AccountProfileUnlinkResponse toProfileUnlinkResponse(Account account, Profile profile) {
-        return AccountProfileUnlinkResponse.builder()
-                .accountId(account.getId())
-                .profileId(profile.getId())
-                .profileType(profile.getProfileType())
-                .build();
-    }
 }

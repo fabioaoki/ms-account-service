@@ -3,7 +3,7 @@
     "name": "ms-account-service",
     "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.7.0"
+    "version": "1.12.0"
   },
   "item": [
     {
@@ -357,7 +357,7 @@
               "mode": "raw",
               "raw": "{\n  \"profileType\": \"{{profileTypeUnlink}}\"\n}"
             },
-            "description": "Remove vinculo (SPEAKER, BISHOP ou COACH). ANNOTATOR nao pode ser removido. Conta ACTIVE. Se ja nao houver vinculo, retorna 200 igual (idempotente). History com action UNLINK apenas quando removeu de fato."
+            "description": "Remove vinculo (SPEAKER, BISHOP ou COACH). ANNOTATOR nao pode ser removido. Conta ACTIVE. Se ja nao houver vinculo, retorna 200 igual (idempotente). History com action UNLINK apenas quando removeu de fato. Resposta 200 sem corpo."
           },
           "event": [
             {
@@ -377,12 +377,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
-                  "const json = pm.response.json();",
-                  "pm.test('Resposta contem ids e tipo', function () {",
-                  "  pm.expect(json.accountId).to.be.a('number');",
-                  "  pm.expect(json.profileId).to.be.a('number');",
-                  "  pm.expect(json.profileType).to.eql(pm.variables.get('profileTypeUnlink'));",
-                  "});"
+                  "pm.test('Sem corpo', function () { pm.expect(pm.response.text()).to.eql(''); });"
                 ]
               }
             }
@@ -392,10 +387,10 @@
     },
     {
       "name": "TopicController",
-      "description": "br.com.mechanic.account.controller.topic.TopicController — criacao de topicos (apos vincular perfil nao-ANNOTATOR em AccountController).",
+      "description": "Criacao: apenas chaves em ingles (title, context, profile_type, end_date). Sem profile_type = ANNOTATOR. PUT conforme requests atuais.",
       "item": [
         {
-          "name": "Criar topico (POST /api/v1/accounts/{accountId}/topics)",
+          "name": "Criar topico — perfil complementar (ex. SPEAKER)",
           "request": {
             "method": "POST",
             "header": [
@@ -419,9 +414,84 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tema\": \"{{topicTema}}\",\n  \"contexto\": \"{{topicContexto}}\",\n  \"profile_type\": \"{{profileTypeLink}}\"\n}"
+              "raw": "{\n  \"title\": \"{{topicTema}}\",\n  \"context\": \"{{topicContexto}}\",\n  \"profile_type\": \"{{profileTypeLink}}\",\n  \"end_date\": \"{{topicEndDate}}\"\n}"
             },
-            "description": "Cria registro na tabela topic. Requisitos: conta ACTIVE; profile_type diferente de ANNOTATOR; deve existir linha em account_profile para esta conta com o mesmo tipo (execute antes em AccountController: Vincular perfil com o mesmo profileTypeLink). tema obrigatorio (minimo 2 caracteres apos trim); contexto opcional. Resposta 201: id, accountId, tema, contexto, createdAt, lastUpdatedAt, status OPEN, profile_type."
+            "description": "POST: title, context (opcional), profile_type, end_date. Conta ACTIVE; perfil vinculado; end_date na janela. Resposta 201 espelha title/context (TopicResponse)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function toIsoLocalDateTime(d) {",
+                  "  const pad = (n) => String(n).padStart(2, '0');",
+                  "  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())",
+                  "    + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());",
+                  "}",
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.collectionVariables.get('topicTema')) {",
+                  "  pm.collectionVariables.set('topicTema', 'Topico de exemplo via Postman');",
+                  "}",
+                  "const end = new Date();",
+                  "end.setDate(end.getDate() + 1);",
+                  "pm.collectionVariables.set('topicEndDate', toIsoLocalDateTime(end));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Topico OPEN, end_date e ids', function () {",
+                  "  pm.expect(json.id).to.be.a('number');",
+                  "  pm.expect(json.accountId).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.status).to.eql('OPEN');",
+                  "  pm.expect(json.end_date).to.be.a('string');",
+                  "  pm.expect(json.profile_type).to.eql(pm.variables.get('profileTypeLink'));",
+                  "  pm.expect(json.title).to.be.a('string');",
+                  "  pm.expect(json.createdAt).to.be.a('string');",
+                  "  pm.expect(json.lastUpdatedAt).to.be.undefined;",
+                  "});",
+                  "pm.environment.set('topicId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar topico — ANNOTATOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{topicTemaAnnotator}}\"\n}"
+            },
+            "description": "ANNOTATOR: apenas title (e opcional context). Nao envie profile_type nem end_date. Resposta 201 sem status/end_date/lastUpdatedAt."
           },
           "event": [
             {
@@ -432,8 +502,8 @@
                   "if (!pm.environment.get('accountId')) {",
                   "  pm.environment.set('accountId', 1);",
                   "}",
-                  "if (!pm.collectionVariables.get('topicTema')) {",
-                  "  pm.collectionVariables.set('topicTema', 'Topico de exemplo via Postman');",
+                  "if (!pm.collectionVariables.get('topicTemaAnnotator')) {",
+                  "  pm.collectionVariables.set('topicTemaAnnotator', 'Topico annotator Postman');",
                   "}"
                 ]
               }
@@ -445,16 +515,215 @@
                 "exec": [
                   "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
                   "const json = pm.response.json();",
-                  "pm.test('Topico OPEN e ids', function () {",
-                  "  pm.expect(json.id).to.be.a('number');",
-                  "  pm.expect(json.accountId).to.eql(Number(pm.environment.get('accountId')));",
-                  "  pm.expect(json.status).to.eql('OPEN');",
-                  "  pm.expect(json.profile_type).to.eql(pm.variables.get('profileTypeLink'));",
-                  "  pm.expect(json.tema).to.be.a('string');",
-                  "  pm.expect(json.createdAt).to.be.a('string');",
-                  "  pm.expect(json.lastUpdatedAt).to.be.a('string');",
+                  "pm.test('Sem status, end_date e lastUpdatedAt na resposta', function () {",
+                  "  pm.expect(json.profile_type).to.eql('ANNOTATOR');",
+                  "  pm.expect(json.status).to.be.undefined;",
+                  "  pm.expect(json.end_date).to.be.undefined;",
+                  "  pm.expect(json.lastUpdatedAt).to.be.undefined;",
                   "});",
-                  "pm.environment.set('topicId', json.id);"
+                  "pm.environment.set('topicIdAnnotator', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar topico — perfil complementar (PUT /api/v1/accounts/{accountId}/topics/{topicId})",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{topicTemaUpdated}}\",\n  \"context\": \"{{topicContextoUpdated}}\",\n  \"profile_type\": \"{{profileTypeLink}}\",\n  \"end_date\": \"{{topicEndDateUpdated}}\"\n}"
+            },
+            "description": "PUT completo (todos os campos da atualizacao). Alternativa: envie apenas um subconjunto (ex. só title e context) desde que exista pelo menos um campo. profile_type nao pode ser ANNOTATOR. end_date, se enviado, dentro de [created_at, created_at+3d]."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function toIsoLocalDateTime(d) {",
+                  "  const pad = (n) => String(n).padStart(2, '0');",
+                  "  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())",
+                  "    + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());",
+                  "}",
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.environment.get('topicId')) {",
+                  "  pm.environment.set('topicId', 1);",
+                  "}",
+                  "const end = new Date();",
+                  "end.setDate(end.getDate() + 1);",
+                  "pm.collectionVariables.set('topicEndDateUpdated', toIsoLocalDateTime(end));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Resposta do topico atualizado', function () {",
+                  "  pm.expect(json.id).to.eql(Number(pm.environment.get('topicId')));",
+                  "  pm.expect(json.accountId).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.title).to.eql(pm.collectionVariables.get('topicTemaUpdated'));",
+                  "  pm.expect(json.profile_type).to.eql(pm.variables.get('profileTypeLink'));",
+                  "  pm.expect(json.end_date).to.be.a('string');",
+                  "  pm.expect(json.lastUpdatedAt).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar topico — parcial (so title e context)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{topicTemaPartial}}\",\n  \"context\": \"{{topicContextoPartial}}\"\n}"
+            },
+            "description": "Exemplo de PUT parcial: end_date e profile_type permanecem os do banco. Requer topicId (ex. apos Criar topico — perfil complementar)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.environment.get('topicId')) {",
+                  "  pm.environment.set('topicId', 1);",
+                  "}",
+                  "if (!pm.collectionVariables.get('topicTemaPartial')) {",
+                  "  pm.collectionVariables.set('topicTemaPartial', 'Apenas title e context');",
+                  "}",
+                  "if (!pm.collectionVariables.get('topicContextoPartial')) {",
+                  "  pm.collectionVariables.set('topicContextoPartial', 'Ctx parcial');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Campos enviados atualizados', function () {",
+                  "  pm.expect(json.title).to.eql(pm.collectionVariables.get('topicTemaPartial'));",
+                  "  pm.expect(json.context).to.eql(pm.collectionVariables.get('topicContextoPartial'));",
+                  "});",
+                  "pm.test('lastUpdatedAt preenchido', function () { pm.expect(json.lastUpdatedAt).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar topico — ANNOTATOR (só title)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicIdAnnotator}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicIdAnnotator}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{topicTemaAnnotatorUpdated}}\"\n}"
+            },
+            "description": "PUT apenas com campo title. Topico existente deve ser ANNOTATOR e da mesma conta. Nao envie context, profile_type nem end_date. Use topicIdAnnotator gravado apos Criar topico — ANNOTATOR."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.environment.get('topicIdAnnotator')) {",
+                  "  pm.environment.set('topicIdAnnotator', 1);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Annotator: title e tipo atualizados', function () {",
+                  "  pm.expect(json.title).to.eql(pm.collectionVariables.get('topicTemaAnnotatorUpdated'));",
+                  "  pm.expect(json.profile_type).to.eql('ANNOTATOR');",
+                  "});"
                 ]
               }
             }
@@ -491,6 +760,38 @@
     {
       "key": "topicContexto",
       "value": "Contexto opcional do topico"
+    },
+    {
+      "key": "topicEndDate",
+      "value": ""
+    },
+    {
+      "key": "topicTemaAnnotator",
+      "value": "Topico annotator Postman"
+    },
+    {
+      "key": "topicTemaUpdated",
+      "value": "Topico atualizado via Postman"
+    },
+    {
+      "key": "topicContextoUpdated",
+      "value": "Contexto atualizado via Postman"
+    },
+    {
+      "key": "topicEndDateUpdated",
+      "value": ""
+    },
+    {
+      "key": "topicTemaAnnotatorUpdated",
+      "value": "Topico annotator atualizado Postman"
+    },
+    {
+      "key": "topicTemaPartial",
+      "value": "Apenas title e context"
+    },
+    {
+      "key": "topicContextoPartial",
+      "value": "Ctx parcial"
     }
   ]
 }

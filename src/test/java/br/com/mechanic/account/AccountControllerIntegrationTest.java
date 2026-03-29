@@ -43,6 +43,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -407,11 +408,6 @@ class AccountControllerIntegrationTest {
     void unlinkSpeakerProfileReturnsOkAndPersistsHistory() throws Exception {
         String email = "unlink-spk-" + UUID.randomUUID() + "@email.com";
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
-        Long speakerProfileId = profileRepository
-                .findByProfileType(AccountProfileTypeEnum.SPEAKER)
-                .orElseThrow()
-                .getId();
-
         mockMvc.perform(
                         post(accountProfilesPath(accountId))
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -428,9 +424,7 @@ class AccountControllerIntegrationTest {
                                 .content(buildLinkProfileJson(AccountProfileTypeEnum.SPEAKER))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountId").value(accountId))
-                .andExpect(jsonPath("$.profileId").value(speakerProfileId))
-                .andExpect(jsonPath("$.profileType").value(AccountProfileTypeEnum.SPEAKER.name()));
+                .andExpect(content().string(""));
 
         assertEquals(1L, accountProfileRepository.countByAccount_Id(accountId));
         assertEquals(3L, accountHistoryRepository.countByAccount_Id(accountId));
@@ -457,11 +451,6 @@ class AccountControllerIntegrationTest {
     void unlinkProfileNotLinkedReturnsOkIdempotent() throws Exception {
         String email = "unlink-nl-" + UUID.randomUUID() + "@email.com";
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
-        Long bishopProfileId = profileRepository
-                .findByProfileType(AccountProfileTypeEnum.BISHOP)
-                .orElseThrow()
-                .getId();
-
         assertEquals(1L, accountProfileRepository.countByAccount_Id(accountId));
         assertEquals(1L, accountHistoryRepository.countByAccount_Id(accountId));
 
@@ -471,9 +460,7 @@ class AccountControllerIntegrationTest {
                                 .content(buildLinkProfileJson(AccountProfileTypeEnum.BISHOP))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountId").value(accountId))
-                .andExpect(jsonPath("$.profileId").value(bishopProfileId))
-                .andExpect(jsonPath("$.profileType").value(AccountProfileTypeEnum.BISHOP.name()));
+                .andExpect(content().string(""));
 
         assertEquals(1L, accountProfileRepository.countByAccount_Id(accountId));
         assertEquals(1L, accountHistoryRepository.countByAccount_Id(accountId));
@@ -499,7 +486,8 @@ class AccountControllerIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(buildLinkProfileJson(AccountProfileTypeEnum.SPEAKER))
                 )
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
 
         assertEquals(3L, accountHistoryRepository.countByAccount_Id(accountId));
 
@@ -508,7 +496,8 @@ class AccountControllerIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(buildLinkProfileJson(AccountProfileTypeEnum.SPEAKER))
                 )
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
 
         assertEquals(3L, accountHistoryRepository.countByAccount_Id(accountId));
     }

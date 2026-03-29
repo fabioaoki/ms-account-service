@@ -2,10 +2,16 @@ package br.com.mechanic.account;
 
 import br.com.mechanic.account.constant.AccountUpdateValidationConstants;
 import br.com.mechanic.account.constant.ApiPathConstants;
+import br.com.mechanic.account.constant.TopicCreateRequestJsonConstants;
+import br.com.mechanic.account.constant.TopicCreationConstants;
 import br.com.mechanic.account.constant.TopicValidationConstants;
+import br.com.mechanic.account.entity.account.Account;
+import br.com.mechanic.account.entity.topic.Topic;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
+import br.com.mechanic.account.repository.account.jpa.AccountRepositoryJpa;
 import br.com.mechanic.account.repository.account.jpa.TopicRepositoryJpa;
+import br.com.mechanic.account.service.topic.TopicService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -13,25 +19,67 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(TopicControllerIntegrationTest.FixedClockConfiguration.class)
 class TopicControllerIntegrationTest {
 
     private static final String PASSWORD_VALID = "secret123";
+
+    /**
+     * {@link TopicService} uses {@link LocalDateTime#now(Clock)}; fixed instant so {@code end_date} tests are stable.
+     * Creation time = 2026-06-15T12:35:00 UTC.
+     */
+    private static final String FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY = "2026-06-16T12:35:00";
+
+    private static final String FIXED_NOW_END_DATE_VALID_AT_MAX = "2026-06-18T12:35:00";
+
+    private static final String FIXED_NOW_END_DATE_INVALID_AFTER_MAX = "2026-06-18T12:35:01";
+
+    private static final String FIXED_NOW_END_DATE_INVALID_BEFORE = "2026-06-14T12:35:00";
+
+    /**
+     * Um dia antes de {@link #FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY} / relógio fixo, para validar {@code end_date}
+     * em relação a {@link Topic#getCreatedAt()}, não ao instante atual.
+     */
+    private static final String TOPIC_ANCHOR_ONE_DAY_BEFORE_FIXED_NOW = "2026-06-14T12:35:00";
+
+    private static final String END_DATE_ON_MAX_RELATIVE_TO_TOPIC_ANCHOR = "2026-06-17T12:35:00";
+
+    private static final String END_DATE_INVALID_AFTER_TOPIC_ANCHOR_PLUS_THREE_DAYS = "2026-06-17T12:35:01";
+
+    @TestConfiguration
+    static class FixedClockConfiguration {
+
+        @Bean
+        @Primary
+        Clock fixedClock() {
+            return Clock.fixed(Instant.parse("2026-06-15T12:35:00Z"), ZoneOffset.UTC);
+        }
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -39,16 +87,24 @@ class TopicControllerIntegrationTest {
     @Autowired
     private TopicRepositoryJpa topicRepositoryJpa;
 
+    @Autowired
+    private AccountRepositoryJpa accountRepositoryJpa;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    @DisplayName("POST .../topics com conta ACTIVE e perfil complementar (nao ANNOTATOR) retorna 201 e status OPEN")
+    @DisplayName("POST .../topics com conta ACTIVE e SPEAKER vinculado em account_profile retorna 201")
     void createTopicWithActiveAccountReturnsCreated() throws Exception {
         String email = "topic-" + UUID.randomUUID() + "@email.com";
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
         linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
 
-        String body = buildTopicJson("Tema valido para o topico", null, AccountProfileTypeEnum.SPEAKER);
+        String body = buildTopicJson(
+                "Tema valido para o topico",
+                null,
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+        );
 
         mockMvc.perform(
                         post(accountTopicsPath(accountId))
@@ -58,11 +114,12 @@ class TopicControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.accountId").value(accountId))
-                .andExpect(jsonPath("$.tema").value("Tema valido para o topico"))
-                .andExpect(jsonPath("$.contexto").doesNotExist())
+                .andExpect(jsonPath("$.title").value("Tema valido para o topico"))
+                .andExpect(jsonPath("$.context").doesNotExist())
                 .andExpect(jsonPath("$.createdAt").exists())
-                .andExpect(jsonPath("$.lastUpdatedAt").exists())
+                .andExpect(jsonPath("$.lastUpdatedAt").doesNotExist())
                 .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()))
+                .andExpect(jsonPath("$.end_date").value(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY))
                 .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.SPEAKER.name()));
 
         assertEquals(1L, topicRepositoryJpa.countByAccount_Id(accountId));
@@ -78,7 +135,8 @@ class TopicControllerIntegrationTest {
         String body = buildTopicJson(
                 "Outro tema ok",
                 "Contexto detalhado do topico",
-                AccountProfileTypeEnum.COACH
+                AccountProfileTypeEnum.COACH,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
         );
 
         mockMvc.perform(
@@ -87,7 +145,9 @@ class TopicControllerIntegrationTest {
                                 .content(body)
                 )
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.contexto").value("Contexto detalhado do topico"));
+                .andExpect(jsonPath("$.context").value("Contexto detalhado do topico"))
+                .andExpect(jsonPath("$.end_date").value(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY))
+                .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()));
     }
 
     @Test
@@ -96,12 +156,15 @@ class TopicControllerIntegrationTest {
         String email = "topic-inact-" + UUID.randomUUID() + "@email.com";
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
 
-        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
-
         mockMvc.perform(patch(accountDeactivatePath(accountId)))
                 .andExpect(status().isOk());
 
-        String body = buildTopicJson("Tema qualquer", null, AccountProfileTypeEnum.SPEAKER);
+        String body = buildTopicJson(
+                "Tema qualquer",
+                null,
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+        );
 
         mockMvc.perform(
                         post(accountTopicsPath(accountId))
@@ -119,9 +182,8 @@ class TopicControllerIntegrationTest {
     void createTopicWithSingleLetterTemaReturnsBadRequest() throws Exception {
         String email = "topic-1c-" + UUID.randomUUID() + "@email.com";
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(24));
-        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
 
-        String body = buildTopicJson("x", null, AccountProfileTypeEnum.SPEAKER);
+        String body = buildTopicJson("x", null, AccountProfileTypeEnum.ANNOTATOR);
 
         mockMvc.perform(
                         post(accountTopicsPath(accountId))
@@ -129,16 +191,21 @@ class TopicControllerIntegrationTest {
                                 .content(body)
                 )
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TEMA_INVALID_LENGTH));
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_TITLE_INVALID_LENGTH));
     }
 
     @Test
-    @DisplayName("POST .../topics com profile_type nao vinculado a conta retorna 400")
-    void createTopicWithUnlinkedProfileTypeReturnsBadRequest() throws Exception {
+    @DisplayName("POST .../topics com SPEAKER sem vinculo em account_profile retorna 400")
+    void createTopicWithUnlinkedSpeakerProfileReturnsBadRequest() throws Exception {
         String email = "topic-prf-" + UUID.randomUUID() + "@email.com";
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(23));
 
-        String body = buildTopicJson("Tema com perfil inexistente na conta", null, AccountProfileTypeEnum.SPEAKER);
+        String body = buildTopicJson(
+                "Tema valido com perfil nao vinculado",
+                null,
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+        );
 
         mockMvc.perform(
                         post(accountTopicsPath(accountId))
@@ -147,12 +214,19 @@ class TopicControllerIntegrationTest {
                 )
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_PROFILE_TYPE_NOT_LINKED_TO_ACCOUNT));
+
+        assertEquals(0L, topicRepositoryJpa.countByAccount_Id(accountId));
     }
 
     @Test
     @DisplayName("POST .../topics com conta inexistente retorna 400")
     void createTopicWithUnknownAccountReturnsBadRequest() throws Exception {
-        String body = buildTopicJson("Tema ok", null, AccountProfileTypeEnum.SPEAKER);
+        String body = buildTopicJson(
+                "Tema ok",
+                null,
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+        );
 
         mockMvc.perform(
                         post(accountTopicsPath(999999L))
@@ -164,19 +238,12 @@ class TopicControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST .../topics apos vincular SPEAKER aceita topico com SPEAKER")
-    void createTopicWithLinkedSpeakerProfileReturnsCreated() throws Exception {
-        String email = "topic-spk-" + UUID.randomUUID() + "@email.com";
-        Long accountId = createAccountAndGetId(email, "joao", "santos", LocalDate.now().minusYears(30));
+    @DisplayName("POST .../topics sem profile_type (só title) retorna 201 como ANNOTATOR")
+    void createTopicWithOnlyTemaInfersAnnotatorReturnsCreated() throws Exception {
+        String email = "topic-ant-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
 
-        mockMvc.perform(
-                        post(accountProfilesPath(accountId))
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(buildLinkProfileJson(AccountProfileTypeEnum.SPEAKER))
-                )
-                .andExpect(status().isCreated());
-
-        String body = buildTopicJson("Palestra principal", "Resumo", AccountProfileTypeEnum.SPEAKER);
+        String body = buildTopicCreateJsonImplicitAnnotator("Tema valido", null);
 
         mockMvc.perform(
                         post(accountTopicsPath(accountId))
@@ -184,16 +251,45 @@ class TopicControllerIntegrationTest {
                                 .content(body)
                 )
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.SPEAKER.name()));
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.accountId").value(accountId))
+                .andExpect(jsonPath("$.title").value("Tema valido"))
+                .andExpect(jsonPath("$.status").doesNotExist())
+                .andExpect(jsonPath("$.end_date").doesNotExist())
+                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.ANNOTATOR.name()));
+
+        assertEquals(1L, topicRepositoryJpa.countByAccount_Id(accountId));
     }
 
     @Test
-    @DisplayName("POST .../topics com profile_type ANNOTATOR retorna 400")
-    void createTopicWithAnnotatorProfileReturnsBadRequest() throws Exception {
-        String email = "topic-ant-" + UUID.randomUUID() + "@email.com";
+    @DisplayName("POST .../topics com profile_type ANNOTATOR explicito retorna 201")
+    void createTopicWithExplicitTipoPerfilAnnotatorReturnsCreated() throws Exception {
+        String email = "topic-ant-exp-" + UUID.randomUUID() + "@email.com";
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
 
-        String body = buildTopicJson("Tema valido", null, AccountProfileTypeEnum.ANNOTATOR);
+        String body = buildTopicJson("Tema expl", null, AccountProfileTypeEnum.ANNOTATOR);
+
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.ANNOTATOR.name()));
+    }
+
+    @Test
+    @DisplayName("POST .../topics end_date sem profile_type retorna 400")
+    void createTopicWithEndDateButNoProfileTypeReturnsBadRequest() throws Exception {
+        String email = "topic-no-prf-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+
+        String body = """
+                {
+                  "title": "Ok tema",
+                  "end_date": "2099-12-31T23:59:59"
+                }
+                """;
 
         mockMvc.perform(
                         post(accountTopicsPath(accountId))
@@ -201,7 +297,132 @@ class TopicControllerIntegrationTest {
                                 .content(body)
                 )
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ANNOTATOR_CANNOT_CREATE_TOPIC));
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(TopicValidationConstants.MESSAGE_PROFILE_TYPE_REQUIRED_WHEN_END_DATE_PRESENT)
+                );
+    }
+
+    @Test
+    @DisplayName("POST .../topics ANNOTATOR com end_date no body retorna 400")
+    void createTopicWithAnnotatorAndEndDateInBodyReturnsBadRequest() throws Exception {
+        String email = "topic-ant-ed-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+
+        String body = buildTopicJson(
+                "Tema valido",
+                null,
+                AccountProfileTypeEnum.ANNOTATOR,
+                endDateJsonSuffix("2099-12-31T23:59:59")
+        );
+
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ANNOTATOR_TOPIC_CANNOT_SEND_END_DATE));
+
+        assertEquals(0L, topicRepositoryJpa.countByAccount_Id(accountId));
+    }
+
+    @Test
+    @DisplayName("POST .../topics SPEAKER com end_date apos o limite de 3 dias retorna 400")
+    void createTopicWithSpeakerEndDateAfterMaxReturnsBadRequest() throws Exception {
+        String email = "topic-spk-late-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+
+        String body = buildTopicJson(
+                "Tema valido",
+                null,
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_INVALID_AFTER_MAX)
+        );
+
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicValidationConstants.MESSAGE_END_DATE_MUST_NOT_EXCEED_CREATION_PLUS_MAX_DAYS.formatted(
+                                TopicCreationConstants.NON_ANNOTATOR_END_DATE_MAX_OFFSET_DAYS
+                        )
+                ));
+
+        assertEquals(0L, topicRepositoryJpa.countByAccount_Id(accountId));
+    }
+
+    @Test
+    @DisplayName("POST .../topics SPEAKER com end_date exatamente no limite (criacao + 3 dias, mesmo horario) retorna 201")
+    void createTopicWithSpeakerEndDateExactlyAtMaxReturnsCreated() throws Exception {
+        String email = "topic-spk-max-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+
+        String body = buildTopicJson(
+                "Tema no limite",
+                null,
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_AT_MAX)
+        );
+
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.end_date").value(FIXED_NOW_END_DATE_VALID_AT_MAX))
+                .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()));
+
+        assertEquals(1L, topicRepositoryJpa.countByAccount_Id(accountId));
+    }
+
+    @Test
+    @DisplayName("POST .../topics SPEAKER sem end_date no body retorna 400")
+    void createTopicWithSpeakerMissingEndDateReturnsBadRequest() throws Exception {
+        String email = "topic-spk-noed-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+
+        String body = buildTopicJson("Tema valido", null, AccountProfileTypeEnum.SPEAKER);
+
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_END_DATE_REQUIRED_FOR_NON_ANNOTATOR_TOPIC));
+
+        assertEquals(0L, topicRepositoryJpa.countByAccount_Id(accountId));
+    }
+
+    @Test
+    @DisplayName("POST .../topics SPEAKER com end_date antes da criacao retorna 400")
+    void createTopicWithSpeakerEndDateBeforeCreationReturnsBadRequest() throws Exception {
+        String email = "topic-spk-early-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+
+        String body = buildTopicJson(
+                "Tema valido",
+                null,
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_INVALID_BEFORE)
+        );
+
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_END_DATE_MUST_NOT_BE_BEFORE_CREATION));
 
         assertEquals(0L, topicRepositoryJpa.countByAccount_Id(accountId));
     }
@@ -211,9 +432,8 @@ class TopicControllerIntegrationTest {
     void createTopicWithBlankTemaReturnsBadRequest() throws Exception {
         String email = "topic-blank-" + UUID.randomUUID() + "@email.com";
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(26));
-        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
 
-        String body = buildTopicJson("   ", null, AccountProfileTypeEnum.SPEAKER);
+        String body = buildTopicJson("   ", null, AccountProfileTypeEnum.ANNOTATOR);
 
         mockMvc.perform(
                         post(accountTopicsPath(accountId))
@@ -222,7 +442,286 @@ class TopicControllerIntegrationTest {
                 )
                 .andExpect(status().isBadRequest())
                 .andExpect(
-                        jsonPath("$.message").value("tema: " + TopicValidationConstants.MESSAGE_TEMA_REQUIRED)
+                        jsonPath("$.message").value("title: " + TopicValidationConstants.MESSAGE_TOPIC_TITLE_REQUIRED)
+                );
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} ANNOTATOR apenas tema retorna 200")
+    void updateAnnotatorTopicTemaOnlyReturnsOk() throws Exception {
+        String email = "topic-put-ant-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        String bodyCreate = buildTopicJson("Tema inicial", null, AccountProfileTypeEnum.ANNOTATOR);
+        String created = mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(bodyCreate)
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long topicId = objectMapper.readTree(created).get("id").asLong();
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildTopicUpdateJsonAnnotatorOnly("Tema atualizado annotator"))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Tema atualizado annotator"))
+                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.ANNOTATOR.name()))
+                .andExpect(jsonPath("$.lastUpdatedAt").exists());
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} SPEAKER apenas tema e contexto retorna 200")
+    void updateSpeakerTopicWithOnlyTemaAndContextoReturnsOk() throws Exception {
+        String email = "topic-put-partial-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        String bodyCreate = buildTopicJson(
+                "Titulo original",
+                "Ctx orig",
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+        );
+        String created = mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(bodyCreate)
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long topicId = objectMapper.readTree(created).get("id").asLong();
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildTopicUpdateJsonTemaAndContextoOnly("Só partial", "Novo ctx"))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Só partial"))
+                .andExpect(jsonPath("$.context").value("Novo ctx"))
+                .andExpect(jsonPath("$.end_date").value(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY))
+                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.SPEAKER.name()))
+                .andExpect(jsonPath("$.lastUpdatedAt").exists());
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} SPEAKER corpo vazio retorna 400")
+    void updateNonAnnotatorTopicEmptyBodyReturnsBadRequest() throws Exception {
+        String email = "topic-put-empty-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountId);
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}")
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value(TopicValidationConstants.MESSAGE_TOPIC_UPDATE_AT_LEAST_ONE_FIELD));
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} ANNOTATOR com profile_type no body retorna 400")
+    void updateAnnotatorTopicWithProfileTypeInBodyReturnsBadRequest() throws Exception {
+        String email = "topic-put-ant-bad-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        String bodyCreate = buildTopicJson("Tema", null, AccountProfileTypeEnum.ANNOTATOR);
+        String created = mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(bodyCreate)
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long topicId = objectMapper.readTree(created).get("id").asLong();
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        buildTopicUpdateJsonNonAnnotator(
+                                                "Tema",
+                                                null,
+                                                AccountProfileTypeEnum.ANNOTATOR,
+                                                null
+                                        )
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(TopicValidationConstants.MESSAGE_ANNOTATOR_TOPIC_UPDATE_FORBIDDEN_FIELDS)
+                );
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} SPEAKER nao pode alterar profile_type para ANNOTATOR")
+    void updateNonAnnotatorTopicToAnnotatorReturnsBadRequest() throws Exception {
+        String email = "topic-put-no-ant-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountId);
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildTopicUpdateJsonProfileTypeOnly(AccountProfileTypeEnum.ANNOTATOR))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(TopicValidationConstants.MESSAGE_NON_ANNOTATOR_TOPIC_CANNOT_CHANGE_TO_ANNOTATOR)
+                );
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} SPEAKER dono altera tema e end_date retorna 200")
+    void updateSpeakerTopicReturnsOk() throws Exception {
+        String email = "topic-put-spk-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        String bodyCreate = buildTopicJson(
+                "Tema inicial",
+                "Ctx",
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+        );
+        String created = mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(bodyCreate)
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long topicId = objectMapper.readTree(created).get("id").asLong();
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        buildTopicUpdateJsonNonAnnotator(
+                                                "Tema novo",
+                                                "Novo contexto",
+                                                AccountProfileTypeEnum.SPEAKER,
+                                                FIXED_NOW_END_DATE_VALID_AT_MAX
+                                        )
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Tema novo"))
+                .andExpect(jsonPath("$.context").value("Novo contexto"))
+                .andExpect(jsonPath("$.end_date").value(FIXED_NOW_END_DATE_VALID_AT_MAX))
+                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.SPEAKER.name()))
+                .andExpect(jsonPath("$.lastUpdatedAt").exists());
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} outra conta retorna 400 (topico nao pertence ao accountId)")
+    void updateTopicWithWrongAccountReturnsBadRequest() throws Exception {
+        String emailA = "topic-put-a-" + UUID.randomUUID() + "@email.com";
+        Long accountIdA = createAccountAndGetId(emailA, "Ana", "Alfa", LocalDate.now().minusYears(24));
+        linkProfileForTopicCreation(accountIdA, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountIdA);
+
+        String emailB = "topic-put-b-" + UUID.randomUUID() + "@email.com";
+        Long accountIdB = createAccountAndGetId(emailB, "Bea", "Beta", LocalDate.now().minusYears(26));
+        linkProfileForTopicCreation(accountIdB, AccountProfileTypeEnum.SPEAKER);
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountIdB, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        buildTopicUpdateJsonNonAnnotator(
+                                                "X",
+                                                null,
+                                                AccountProfileTypeEnum.SPEAKER,
+                                                FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY
+                                        )
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED)
+                );
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} SPEAKER end_date alem de created_at+3d (topico criado ontem) retorna 400")
+    void updateSpeakerTopicEndDateBeyondOriginalCreationWindowReturnsBadRequest() throws Exception {
+        String email = "topic-put-window-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        LocalDateTime topicCreatedAt = LocalDateTime.parse(TOPIC_ANCHOR_ONE_DAY_BEFORE_FIXED_NOW);
+        LocalDateTime initialEnd = topicCreatedAt.plusDays(1);
+        long topicId = persistSpeakerTopicInDb(accountId, topicCreatedAt, initialEnd);
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        buildTopicUpdateJsonEndDateOnly(
+                                                END_DATE_INVALID_AFTER_TOPIC_ANCHOR_PLUS_THREE_DAYS
+                                        )
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicValidationConstants.MESSAGE_END_DATE_MUST_NOT_EXCEED_CREATION_PLUS_MAX_DAYS.formatted(
+                                TopicCreationConstants.NON_ANNOTATOR_END_DATE_MAX_OFFSET_DAYS
+                        )
+                ));
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        buildTopicUpdateJsonEndDateOnly(
+                                                END_DATE_ON_MAX_RELATIVE_TO_TOPIC_ANCHOR
+                                        )
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.end_date").value(END_DATE_ON_MAX_RELATIVE_TO_TOPIC_ANCHOR));
+    }
+
+    @Test
+    @DisplayName("PUT .../topics/{id} conta INACTIVE retorna 400")
+    void updateTopicWithInactiveAccountReturnsBadRequest() throws Exception {
+        String email = "topic-put-inact-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountId);
+        mockMvc.perform(patch(accountDeactivatePath(accountId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        put(accountTopicItemPath(accountId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        buildTopicUpdateJsonNonAnnotator(
+                                                "Tema",
+                                                null,
+                                                AccountProfileTypeEnum.SPEAKER,
+                                                FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY
+                                        )
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_TO_UPDATE_TOPIC)
                 );
     }
 
@@ -233,7 +732,12 @@ class TopicControllerIntegrationTest {
         Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(27));
         linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.BISHOP);
 
-        String body = buildTopicJson("  Ab  ", null, AccountProfileTypeEnum.BISHOP);
+        String body = buildTopicJson(
+                "  Ab  ",
+                null,
+                AccountProfileTypeEnum.BISHOP,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+        );
 
         mockMvc.perform(
                         post(accountTopicsPath(accountId))
@@ -241,7 +745,7 @@ class TopicControllerIntegrationTest {
                                 .content(body)
                 )
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.tema").value("Ab"));
+                .andExpect(jsonPath("$.title").value("Ab"));
     }
 
     private void linkProfileForTopicCreation(Long accountId, AccountProfileTypeEnum profileType) throws Exception {
@@ -292,12 +796,121 @@ class TopicControllerIntegrationTest {
         return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.TOPICS_SEGMENT;
     }
 
-    private static String accountProfilesPath(Long accountId) {
-        return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.ACCOUNT_PROFILES_SEGMENT;
+    private static String accountTopicItemPath(Long accountId, long topicId) {
+        return accountTopicsPath(accountId) + "/" + topicId;
+    }
+
+    private long createSpeakerTopicViaApi(Long accountId) throws Exception {
+        String bodyCreate = buildTopicJson(
+                "Topico api",
+                null,
+                AccountProfileTypeEnum.SPEAKER,
+                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+        );
+        String created = mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(bodyCreate)
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(created).get("id").asLong();
+    }
+
+    private long persistSpeakerTopicInDb(Long accountId, LocalDateTime createdAt, LocalDateTime endDate) {
+        Account account = accountRepositoryJpa.findById(accountId).orElseThrow();
+        Topic topic = Topic.builder()
+                .account(account)
+                .title("Persistido para PUT")
+                .context(null)
+                .createdAt(createdAt)
+                .lastUpdatedAt(null)
+                .status(TopicStatusEnum.OPEN)
+                .endDate(endDate)
+                .profileType(AccountProfileTypeEnum.SPEAKER)
+                .build();
+        return topicRepositoryJpa.save(topic).getId();
+    }
+
+    private static String buildTopicUpdateJsonAnnotatorOnly(String title) {
+        return """
+                {"%s": "%s"}
+                """
+                .formatted(TopicCreateRequestJsonConstants.TITLE, escapeJson(title));
+    }
+
+    private static String buildTopicUpdateJsonTemaAndContextoOnly(String title, String contexto) {
+        return """
+                {
+                  "%s": "%s",
+                  "%s": "%s"
+                }
+                """
+                .formatted(
+                        TopicCreateRequestJsonConstants.TITLE,
+                        escapeJson(title),
+                        TopicCreateRequestJsonConstants.CONTEXT,
+                        escapeJson(contexto));
+    }
+
+    private static String buildTopicUpdateJsonEndDateOnly(String endDateIso) {
+        return """
+                {"end_date": "%s"}
+                """.formatted(endDateIso);
+    }
+
+    private static String buildTopicUpdateJsonProfileTypeOnly(AccountProfileTypeEnum profileType) {
+        return """
+                {"profile_type": "%s"}
+                """.formatted(profileType.name());
+    }
+
+    private static String buildTopicUpdateJsonNonAnnotator(
+            String title,
+            String contexto,
+            AccountProfileTypeEnum profileType,
+            String endDateIsoOrNull
+    ) {
+        String endPart = endDateIsoOrNull == null ? "" : ", \"end_date\": \"" + endDateIsoOrNull + "\"";
+        if (contexto == null) {
+            return """
+                    {
+                      "%s": "%s",
+                      "profile_type": "%s"%s
+                    }
+                    """
+                    .formatted(
+                            TopicCreateRequestJsonConstants.TITLE,
+                            escapeJson(title),
+                            profileType.name(),
+                            endPart
+                    );
+        }
+        return """
+                {
+                  "%s": "%s",
+                  "%s": "%s",
+                  "profile_type": "%s"%s
+                }
+                """
+                .formatted(
+                        TopicCreateRequestJsonConstants.TITLE,
+                        escapeJson(title),
+                        TopicCreateRequestJsonConstants.CONTEXT,
+                        escapeJson(contexto),
+                        profileType.name(),
+                        endPart
+                );
     }
 
     private static String accountDeactivatePath(Long accountId) {
         return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.ACCOUNT_DEACTIVATE_SEGMENT;
+    }
+
+    private static String accountProfilesPath(Long accountId) {
+        return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.ACCOUNT_PROFILES_SEGMENT;
     }
 
     private static String buildLinkProfileJson(AccountProfileTypeEnum profileType) {
@@ -306,22 +919,74 @@ class TopicControllerIntegrationTest {
                 """.formatted(profileType.name());
     }
 
-    private static String buildTopicJson(String tema, String contexto, AccountProfileTypeEnum profileType) {
+    private static String endDateJsonSuffix(String endDateIsoLocal) {
+        return ", \"" + TopicCreateRequestJsonConstants.END_DATE + "\": \"" + endDateIsoLocal + "\"";
+    }
+
+    private static String buildTopicCreateJsonImplicitAnnotator(String tema, String contexto) {
         if (contexto == null) {
             return """
-                    {
-                      "tema": "%s",
-                      "profile_type": "%s"
-                    }
-                    """.formatted(escapeJson(tema), profileType.name());
+                    {"%s": "%s"}
+                    """
+                    .formatted(TopicCreateRequestJsonConstants.TITLE, escapeJson(tema));
         }
         return """
                 {
-                  "tema": "%s",
-                  "contexto": "%s",
-                  "profile_type": "%s"
+                  "%s": "%s",
+                  "%s": "%s"
                 }
-                """.formatted(escapeJson(tema), escapeJson(contexto), profileType.name());
+                """
+                .formatted(
+                        TopicCreateRequestJsonConstants.TITLE,
+                        escapeJson(tema),
+                        TopicCreateRequestJsonConstants.CONTEXT,
+                        escapeJson(contexto)
+                );
+    }
+
+    private static String buildTopicJson(String tema, String contexto, AccountProfileTypeEnum profileType) {
+        return buildTopicJson(tema, contexto, profileType, "");
+    }
+
+    /**
+     * @param extraCommaPrefixedJson trecho JSON apos profile_type, com virgula inicial (ex.: {@code , "end_date": "..."}).
+     */
+    private static String buildTopicJson(
+            String tema,
+            String contexto,
+            AccountProfileTypeEnum profileType,
+            String extraCommaPrefixedJson
+    ) {
+        String extra = extraCommaPrefixedJson == null ? "" : extraCommaPrefixedJson;
+        if (contexto == null) {
+            return """
+                    {
+                      "%s": "%s",
+                      "%s": "%s"%s
+                    }
+                    """.formatted(
+                    TopicCreateRequestJsonConstants.TITLE,
+                    escapeJson(tema),
+                    TopicCreateRequestJsonConstants.PROFILE_TYPE,
+                    profileType.name(),
+                    extra
+            );
+        }
+        return """
+                {
+                  "%s": "%s",
+                  "%s": "%s",
+                  "%s": "%s"%s
+                }
+                """.formatted(
+                TopicCreateRequestJsonConstants.TITLE,
+                escapeJson(tema),
+                TopicCreateRequestJsonConstants.CONTEXT,
+                escapeJson(contexto),
+                TopicCreateRequestJsonConstants.PROFILE_TYPE,
+                profileType.name(),
+                extra
+        );
     }
 
     private static String escapeJson(String value) {

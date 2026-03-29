@@ -1,6 +1,7 @@
 {
   "java.compile.nullAnalysis.mode": "automatic",
   "java.configuration.updateBuildConfiguration": "automatic",
+  "java.configuration.maven.userSettings": "${workspaceFolder}/.mvn/settings-central.xml",
   "java.import.maven.enabled": true,
   "java.server.launchMode": "Standard"
 }

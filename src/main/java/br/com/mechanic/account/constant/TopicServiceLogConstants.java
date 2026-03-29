@@ -7,17 +7,26 @@ import lombok.NoArgsConstructor;
 public final class TopicServiceLogConstants {
 
     public static final String CREATE_TOPIC_FLOW_STARTED =
-            "Fluxo de criacao de topico iniciado. identificadorConta={}";
+            "Topic creation flow started. accountId={}";
 
     public static final String CREATE_TOPIC_FLOW_COMPLETED =
-            "Fluxo de criacao de topico concluido. identificadorConta={} identificadorTopico={}";
+            "Topic creation flow completed. accountId={} topicId={}";
 
     public static final String CREATE_TOPIC_REJECTED_ACCOUNT_NOT_ACTIVE =
-            "Criacao de topico reprovada: conta nao esta ACTIVE.";
+            "Topic creation rejected: account is not ACTIVE.";
 
     public static final String CREATE_TOPIC_REJECTED_PROFILE_NOT_LINKED =
-            "Criacao de topico reprovada: nenhuma linha em account_profile para esta conta e profile_type.";
+            "Topic creation rejected: no account_profile row for this account and profile_type.";
 
-    public static final String CREATE_TOPIC_REJECTED_ANNOTATOR_PROFILE =
-            "Criacao de topico reprovada: perfil ANNOTATOR nao permitido neste fluxo.";
+    public static final String UPDATE_TOPIC_FLOW_STARTED =
+            "Topic update flow started. accountId={} topicId={}";
+
+    public static final String UPDATE_TOPIC_FLOW_COMPLETED =
+            "Topic update flow completed. accountId={} topicId={}";
+
+    public static final String UPDATE_TOPIC_REJECTED_ACCOUNT_NOT_ACTIVE =
+            "Topic update rejected: account is not ACTIVE.";
+
+    public static final String UPDATE_TOPIC_REJECTED_PROFILE_NOT_LINKED =
+            "Topic update rejected: no account_profile row for this account and profile_type.";
 }

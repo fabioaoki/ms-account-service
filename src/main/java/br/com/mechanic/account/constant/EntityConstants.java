@@ -38,9 +38,10 @@ public final class EntityConstants {
     public static final String COLUMN_HISTORY_CREATED_AT = "created_at";
     public static final String COLUMN_ACCOUNT_HISTORY_ACTION = "action";
     public static final String COLUMN_ACCOUNT_STATUS_HISTORY_OCCURRED_AT = "occurred_at";
-    public static final String COLUMN_TEMA = "tema";
+    public static final String COLUMN_TITLE = "title";
     public static final String COLUMN_TOPIC_CONTEXT = "context";
     public static final String COLUMN_TOPIC_STATUS = "status";
+    public static final String COLUMN_TOPIC_END_DATE = "end_date";
 
     public static final int EMAIL_COLUMN_LENGTH = 254;
     public static final int NAME_COLUMN_LENGTH = 120;
@@ -50,7 +51,7 @@ public final class EntityConstants {
     public static final int PROFILE_TYPE_COLUMN_LENGTH = 32;
     public static final int ACCOUNT_STATUS_COLUMN_LENGTH = 32;
     public static final int ACCOUNT_HISTORY_ACTION_COLUMN_LENGTH = 16;
-    public static final int TOPIC_TEMA_COLUMN_LENGTH = 500;
+    public static final int TOPIC_TITLE_COLUMN_LENGTH = 500;
     public static final int TOPIC_CONTEXT_COLUMN_LENGTH = 4000;
     public static final int TOPIC_STATUS_COLUMN_LENGTH = 32;
 }

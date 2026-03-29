@@ -20,9 +20,9 @@ Microserviço de **contas** (Account) em **Spring Boot**.
 
 O serviço foi preparado para sobrescrever configurações via variáveis de ambiente:
 
-- `MS_ACCOUNT_DATASOURCE_URL` (default: `jdbc:postgresql://localhost:5432/ms_account`)
-- `MS_ACCOUNT_DATASOURCE_USERNAME` (default: `postgres`)
-- `MS_ACCOUNT_DATASOURCE_PASSWORD` (default: `postgres`)
+- `MS_ACCOUNT_DATASOURCE_URL` (default local: `jdbc:postgresql://localhost:5433/annotation_app`, alinhado ao `docker-compose.yml`)
+- `MS_ACCOUNT_DATASOURCE_USERNAME` (default: `annotation_app`)
+- `MS_ACCOUNT_DATASOURCE_PASSWORD` (default: `1234` — apenas desenvolvimento local)
 - `MS_ACCOUNT_DDL_AUTO` (default: `update`)
 
 ## Como rodar localmente

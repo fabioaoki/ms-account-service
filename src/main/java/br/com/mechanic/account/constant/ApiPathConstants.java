@@ -16,6 +16,14 @@ public final class ApiPathConstants {
 
     public static final String TOPICS_SEGMENT = "/topics";
 
+    public static final String TOPIC_ID_PATH_VARIABLE = "/{topicId}";
+
+    /**
+     * Ex.: {@code /api/v1/accounts/1/topics/42} (PUT parcial por tópico).
+     */
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topics/*";
+
     public static final String ACCOUNT_DEACTIVATE_SEGMENT = "/deactivate";
 
     public static final String ACCOUNT_ACTIVATE_SEGMENT = "/activate";

@@ -1,0 +1,22 @@
+# PostgreSQL local: mesma URL/usuário/senha/banco que MsAccountService (Cursor + Docker Postgres).
+services:
+  postgres:
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
+    image: ms-account-postgres:local
+    container_name: ms-account-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    volumes:
+      - ms_account_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U annotation_app -d annotation_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  ms_account_postgres_data:
