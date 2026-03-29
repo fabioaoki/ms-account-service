@@ -3,7 +3,9 @@ package br.com.mechanic.account;
 import br.com.mechanic.account.constant.AccountUpdateValidationConstants;
 import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.constant.TopicCreateRequestJsonConstants;
+import br.com.mechanic.account.constant.TopicListQueryConstants;
 import br.com.mechanic.account.constant.TopicCreationConstants;
+import br.com.mechanic.account.constant.TopicPaginationConstants;
 import br.com.mechanic.account.constant.TopicValidationConstants;
 import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.topic.Topic;
@@ -35,6 +37,7 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -172,7 +175,7 @@ class TopicControllerIntegrationTest {
                                 .content(body)
                 )
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_TO_CREATE_TOPIC));
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS));
 
         assertEquals(0L, topicRepositoryJpa.countByAccount_Id(accountId));
     }
@@ -721,8 +724,322 @@ class TopicControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(
                         jsonPath("$.message")
-                                .value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_TO_UPDATE_TOPIC)
+                                .value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS)
                 );
+    }
+
+    @Test
+    @DisplayName("GET .../topics sem topicos para a conta retorna 200 e content vazio")
+    void getAllTopicsByAccountWhenEmptyReturnsEmptyContent() throws Exception {
+        String email = "topic-list-empty-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(24));
+
+        mockMvc.perform(get(accountTopicsPath(accountId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(true));
+    }
+
+    @Test
+    @DisplayName("GET .../topics retorna apenas topicos da conta do path (outra conta com topicos nao aparece)")
+    void getAllTopicsByAccountReturnsOnlyTopicsForPathAccount() throws Exception {
+        String emailA = "topic-list-a-" + UUID.randomUUID() + "@email.com";
+        Long accountIdA = createAccountAndGetId(emailA, "Ana", "Alfa", LocalDate.now().minusYears(24));
+        linkProfileForTopicCreation(accountIdA, AccountProfileTypeEnum.SPEAKER);
+        createSpeakerTopicViaApi(accountIdA);
+
+        String emailB = "topic-list-b-" + UUID.randomUUID() + "@email.com";
+        Long accountIdB = createAccountAndGetId(emailB, "Bea", "Beta", LocalDate.now().minusYears(26));
+
+        mockMvc.perform(get(accountTopicsPath(accountIdB)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    @DisplayName("GET .../topics com paginacao retorna metadados e ordenacao por criacao descendente")
+    void getAllTopicsByAccountReturnsPaginationAndSort() throws Exception {
+        String email = "topic-list-page-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        createSpeakerTopicViaApi(accountId);
+        createSpeakerTopicViaApi(accountId);
+        createSpeakerTopicViaApi(accountId);
+
+        mockMvc.perform(get(accountTopicsPath(accountId)).param("page", "0").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.number").value(0))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(false));
+
+        mockMvc.perform(get(accountTopicsPath(accountId)).param("page", "1").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.number").value(1))
+                .andExpect(jsonPath("$.last").value(true));
+    }
+
+    @Test
+    @DisplayName("GET .../topics com conta inexistente retorna 400")
+    void getAllTopicsByUnknownAccountReturnsBadRequest() throws Exception {
+        mockMvc.perform(get(accountTopicsPath(999999L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AccountUpdateValidationConstants.MESSAGE_ACCOUNT_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("GET .../topics com page negativo retorna 400")
+    void getAllTopicsWithNegativePageReturnsBadRequest() throws Exception {
+        String email = "topic-list-badpg-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(24));
+
+        mockMvc.perform(get(accountTopicsPath(accountId)).param("page", "-1").param("size", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_PAGE_NUMBER_NEGATIVE));
+    }
+
+    @Test
+    @DisplayName("GET .../topics com size acima do maximo retorna 400")
+    void getAllTopicsWithSizeAboveMaxReturnsBadRequest() throws Exception {
+        String email = "topic-list-badsize-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(24));
+        int tooLarge = TopicPaginationConstants.MAX_PAGE_SIZE + 1;
+
+        mockMvc.perform(get(accountTopicsPath(accountId)).param("page", "0").param("size", String.valueOf(tooLarge)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicValidationConstants.MESSAGE_TOPIC_PAGE_SIZE_INVALID.formatted(
+                                TopicPaginationConstants.MIN_PAGE_SIZE,
+                                TopicPaginationConstants.MAX_PAGE_SIZE
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("GET .../topics/{topicId} dono do topico retorna 200")
+    void getTopicByIdWhenOwnerReturnsOk() throws Exception {
+        String email = "topic-get-ok-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountId);
+
+        mockMvc.perform(get(accountTopicItemPath(accountId, topicId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(topicId))
+                .andExpect(jsonPath("$.accountId").value(accountId))
+                .andExpect(jsonPath("$.title").value("Topico api"))
+                .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()));
+    }
+
+    @Test
+    @DisplayName("GET .../topics/{topicId} com accountId diferente do criador retorna 400")
+    void getTopicByIdWhenWrongAccountReturnsBadRequest() throws Exception {
+        String emailA = "topic-get-a-" + UUID.randomUUID() + "@email.com";
+        Long accountIdA = createAccountAndGetId(emailA, "Ana", "Alfa", LocalDate.now().minusYears(24));
+        linkProfileForTopicCreation(accountIdA, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountIdA);
+
+        String emailB = "topic-get-b-" + UUID.randomUUID() + "@email.com";
+        Long accountIdB = createAccountAndGetId(emailB, "Bea", "Beta", LocalDate.now().minusYears(26));
+
+        mockMvc.perform(get(accountTopicItemPath(accountIdB, topicId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
+    }
+
+    @Test
+    @DisplayName("GET .../topics/{topicId} topico inexistente retorna 400")
+    void getTopicByIdWhenUnknownReturnsBadRequest() throws Exception {
+        String email = "topic-get-missing-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(24));
+
+        mockMvc.perform(get(accountTopicItemPath(accountId, 999999L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
+    }
+
+    @Test
+    @DisplayName("GET .../topics conta INACTIVE retorna 400")
+    void getAllTopicsWhenAccountInactiveReturnsBadRequest() throws Exception {
+        String email = "topic-getall-inact-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+        mockMvc.perform(patch(accountDeactivatePath(accountId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(accountTopicsPath(accountId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS));
+    }
+
+    @Test
+    @DisplayName("GET .../topics/{topicId} conta INACTIVE retorna 400")
+    void getTopicByIdWhenAccountInactiveReturnsBadRequest() throws Exception {
+        String email = "topic-getid-inact-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountId);
+        mockMvc.perform(patch(accountDeactivatePath(accountId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(accountTopicItemPath(accountId, topicId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS));
+    }
+
+    @Test
+    @DisplayName("GET .../topics?status= retorna só topicos da conta com aquele status (paginado)")
+    void getTopicsByStatusQueryReturnsOnlyMatchingForAccount() throws Exception {
+        String email = "topic-by-st-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        createSpeakerTopicViaApi(accountId);
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildTopicCreateJsonImplicitAnnotator("Annotator side", null))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.STATUS, TopicStatusEnum.OPEN.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].status").value(TopicStatusEnum.OPEN.name()));
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.STATUS, TopicStatusEnum.CLOSED.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    @DisplayName("GET .../topics?status= conta INACTIVE retorna 400")
+    void getTopicsWithStatusFilterWhenAccountInactiveReturnsBadRequest() throws Exception {
+        String email = "topic-byst-inact-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+        mockMvc.perform(patch(accountDeactivatePath(accountId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.STATUS, TopicStatusEnum.OPEN.name())
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS));
+    }
+
+    @Test
+    @DisplayName("GET .../topics?profile_type= retorna só topicos da conta com aquele perfil de criacao (paginado)")
+    void getTopicsByProfileTypeQueryReturnsOnlyMatchingForAccount() throws Exception {
+        String email = "topic-by-prf-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildTopicCreateJsonImplicitAnnotator("Só annotator", null))
+                )
+                .andExpect(status().isCreated());
+        createSpeakerTopicViaApi(accountId);
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.PROFILE_TYPE, AccountProfileTypeEnum.SPEAKER.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].profile_type").value(AccountProfileTypeEnum.SPEAKER.name()));
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.PROFILE_TYPE, AccountProfileTypeEnum.COACH.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    @DisplayName("GET .../topics?profile_type= conta INACTIVE retorna 400")
+    void getTopicsWithProfileFilterWhenAccountInactiveReturnsBadRequest() throws Exception {
+        String email = "topic-bypr-inact-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+        mockMvc.perform(patch(accountDeactivatePath(accountId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.PROFILE_TYPE, AccountProfileTypeEnum.ANNOTATOR.name())
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS));
+    }
+
+    @Test
+    @DisplayName("GET .../topics?status=&profile_type= aplica os dois filtros juntos (AND)")
+    void getTopicsByStatusAndProfileTypeTogetherReturnsIntersection() throws Exception {
+        String email = "topic-both-f-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.COACH);
+        createSpeakerTopicViaApi(accountId);
+        mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        buildTopicJson(
+                                                "Topico coach",
+                                                null,
+                                                AccountProfileTypeEnum.COACH,
+                                                endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
+                                        )
+                                )
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.STATUS, TopicStatusEnum.OPEN.name())
+                                .param(TopicListQueryConstants.PROFILE_TYPE, AccountProfileTypeEnum.SPEAKER.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].profile_type").value(AccountProfileTypeEnum.SPEAKER.name()))
+                .andExpect(jsonPath("$.content[0].status").value(TopicStatusEnum.OPEN.name()));
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.STATUS, TopicStatusEnum.OPEN.name())
+                                .param(TopicListQueryConstants.PROFILE_TYPE, AccountProfileTypeEnum.COACH.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].profile_type").value(AccountProfileTypeEnum.COACH.name()));
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.STATUS, TopicStatusEnum.OPEN.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(2));
     }
 
     @Test

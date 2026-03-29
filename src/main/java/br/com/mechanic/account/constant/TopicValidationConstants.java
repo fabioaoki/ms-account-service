@@ -17,8 +17,8 @@ public final class TopicValidationConstants {
     public static final String MESSAGE_TOPIC_TITLE_EXCEEDS_MAX_LENGTH =
             "The topic title exceeds the maximum allowed length (%d characters).";
 
-    public static final String MESSAGE_ACCOUNT_MUST_BE_ACTIVE_TO_CREATE_TOPIC =
-            "Only accounts with ACTIVE status can create topics.";
+    public static final String MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS =
+            "Only accounts with ACTIVE status can access topic endpoints.";
 
     public static final String MESSAGE_PROFILE_TYPE_NOT_LINKED_TO_ACCOUNT =
             "The given profile type has no account_profile row for this account.";
@@ -47,9 +47,6 @@ public final class TopicValidationConstants {
     public static final String MESSAGE_ANNOTATOR_TOPIC_UPDATE_FORBIDDEN_FIELDS =
             "ANNOTATOR topic updates must not include context, profile_type, or end_date.";
 
-    public static final String MESSAGE_ACCOUNT_MUST_BE_ACTIVE_TO_UPDATE_TOPIC =
-            "Only accounts with ACTIVE status can update topics.";
-
     public static final String MESSAGE_NON_ANNOTATOR_TOPIC_CANNOT_CHANGE_TO_ANNOTATOR =
             "A topic created with a non-ANNOTATOR profile cannot be updated to ANNOTATOR.";
 
@@ -58,4 +55,10 @@ public final class TopicValidationConstants {
 
     public static final String MESSAGE_ANNOTATOR_TOPIC_UPDATE_TITLE_REQUIRED =
             "title is required when updating an ANNOTATOR topic.";
+
+    public static final String MESSAGE_TOPIC_PAGE_SIZE_INVALID =
+            "page size must be between %d and %d.";
+
+    public static final String MESSAGE_TOPIC_PAGE_NUMBER_NEGATIVE =
+            "page number must be zero or greater.";
 }

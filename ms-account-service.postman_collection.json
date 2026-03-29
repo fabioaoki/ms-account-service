@@ -3,7 +3,7 @@
     "name": "ms-account-service",
     "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.12.0"
+    "version": "1.14.0"
   },
   "item": [
     {
@@ -387,8 +387,40 @@
     },
     {
       "name": "TopicController",
-      "description": "Criacao: apenas chaves em ingles (title, context, profile_type, end_date). Sem profile_type = ANNOTATOR. PUT conforme requests atuais.",
+      "description": "Conta ACTIVE obrigatoria para todos os endpoints de topicos. Listagem: GET .../topics com query opcionais page, size, status (TopicStatusEnum), profile_type (perfil de criacao, snake_case). Use status sozinho, profile_type sozinho ou ambos (AND). Sem status nem profile_type: lista completa da conta.",
       "item": [
+        {
+          "name": "Listar topicos (GET /api/v1/accounts/{accountId}/topics)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts", "{{accountId}}", "topics"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "status", "value": "{{topicStatus}}", "description": "Opcional (ex. OPEN). Adicione na URL se precisar.", "disabled": true },
+                { "key": "profile_type", "value": "{{topicProfileType}}", "description": "Opcional (ex. SPEAKER). Adicione na URL; combine com status se quiser AND.", "disabled": true }
+              ]
+            },
+            "description": "TopicPageResponse paginado. Ative os query params status e/ou profile_type no Postman quando precisar filtrar (sozinhos ou juntos = AND). Sem esses params: todos os topicos da conta."
+          }
+        },
+        {
+          "name": "Obter topico por id (GET /api/v1/accounts/{accountId}/topics/{topicId})",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts", "{{accountId}}", "topics", "{{topicId}}"]
+            },
+            "description": "Somente se o topico pertencer ao accountId. Caso contrario 400 (mesma mensagem que topico inexistente)."
+          }
+        },
         {
           "name": "Criar topico — perfil complementar (ex. SPEAKER)",
           "request": {
@@ -792,6 +824,14 @@
     {
       "key": "topicContextoPartial",
       "value": "Ctx parcial"
+    },
+    {
+      "key": "topicStatus",
+      "value": "OPEN"
+    },
+    {
+      "key": "topicProfileType",
+      "value": "SPEAKER"
     }
   ]
 }

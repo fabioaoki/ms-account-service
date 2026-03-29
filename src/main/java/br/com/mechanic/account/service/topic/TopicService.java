@@ -2,6 +2,7 @@ package br.com.mechanic.account.service.topic;
 
 import br.com.mechanic.account.constant.AccountUpdateValidationConstants;
 import br.com.mechanic.account.constant.TopicCreationConstants;
+import br.com.mechanic.account.constant.TopicPaginationConstants;
 import br.com.mechanic.account.constant.TopicServiceLogConstants;
 import br.com.mechanic.account.constant.EntityConstants;
 import br.com.mechanic.account.constant.TopicValidationConstants;
@@ -9,6 +10,7 @@ import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.topic.Topic;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.AccountStatusEnum;
+import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.exception.AccountException;
 import br.com.mechanic.account.mapper.topic.TopicMapper;
 import br.com.mechanic.account.repository.account.impl.AccountProfileRepositoryImpl;
@@ -16,18 +18,25 @@ import br.com.mechanic.account.repository.account.impl.AccountRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
 import br.com.mechanic.account.service.request.TopicCreateRequest;
 import br.com.mechanic.account.service.request.TopicUpdateRequest;
+import br.com.mechanic.account.service.response.TopicPageResponse;
 import br.com.mechanic.account.service.response.TopicResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * Topic creation: account must exist, be {@link AccountStatusEnum#ACTIVE}; missing {@code profile_type} implies
- * {@link AccountProfileTypeEnum#ANNOTATOR}. Other profiles require a row in account_profile.
+ * Topic endpoints: account must exist and be {@link AccountStatusEnum#ACTIVE}. Creation: missing
+ * {@code profile_type} implies {@link AccountProfileTypeEnum#ANNOTATOR}; other profiles require a row in
+ * account_profile.
  */
 @Service
 @Slf4j
@@ -43,8 +52,7 @@ public class TopicService implements TopicServiceBO {
     @Transactional
     public TopicResponse create(Long accountId, TopicCreateRequest request) {
         log.info(TopicServiceLogConstants.CREATE_TOPIC_FLOW_STARTED, accountId);
-        Account account = getAccountOrThrow(accountId);
-        assertAccountActiveForTopicCreation(account);
+        Account account = getAccountOrThrowAndAssertActiveForTopics(accountId);
         if (request.profileType() == null && request.endDate() != null) {
             throw new AccountException(TopicValidationConstants.MESSAGE_PROFILE_TYPE_REQUIRED_WHEN_END_DATE_PRESENT);
         }
@@ -73,8 +81,7 @@ public class TopicService implements TopicServiceBO {
     @Transactional
     public TopicResponse update(Long accountId, Long topicId, TopicUpdateRequest request) {
         log.info(TopicServiceLogConstants.UPDATE_TOPIC_FLOW_STARTED, accountId, topicId);
-        Account account = getAccountOrThrow(accountId);
-        assertAccountActiveForTopicUpdate(account);
+        Account account = getAccountOrThrowAndAssertActiveForTopics(accountId);
         Topic topic = topicRepository.findByIdAndAccountId(topicId, accountId)
                 .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
 
@@ -114,17 +121,110 @@ public class TopicService implements TopicServiceBO {
         return TopicMapper.toResponse(saved);
     }
 
-    private void assertAccountActiveForTopicCreation(Account account) {
+    @Override
+    @Transactional(readOnly = true)
+    public TopicResponse getByTopicIdAndAccountId(Long accountId, Long topicId) {
+        log.info(TopicServiceLogConstants.GET_TOPIC_BY_ID_FLOW_STARTED, accountId, topicId);
+        getAccountOrThrowAndAssertActiveForTopics(accountId);
+        Topic topic = topicRepository.findByIdAndAccountId(topicId, accountId)
+                .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
+        log.info(TopicServiceLogConstants.GET_TOPIC_BY_ID_FLOW_COMPLETED, accountId, topicId);
+        return TopicMapper.toResponse(topic);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TopicPageResponse getAllByAccountId(
+            Long accountId,
+            Integer page,
+            Integer size,
+            TopicStatusEnum statusFilter,
+            AccountProfileTypeEnum profileTypeFilter
+    ) {
+        ResolvedTopicListParams params = resolveAndAssertTopicListPagination(page, size);
+        log.info(
+                TopicServiceLogConstants.LIST_TOPICS_BY_ACCOUNT_FLOW_STARTED,
+                accountId,
+                statusFilter,
+                profileTypeFilter,
+                params.page(),
+                params.size()
+        );
+        getAccountOrThrowAndAssertActiveForTopics(accountId);
+        Pageable pageable = buildTopicListPageable(params.page(), params.size());
+        Page<Topic> pageResult = topicRepository.findAllByAccountIdWithOptionalFilters(
+                accountId,
+                statusFilter,
+                profileTypeFilter,
+                pageable
+        );
+        return mapToTopicPageResponseAndLog(accountId, pageResult);
+    }
+
+    private TopicPageResponse mapToTopicPageResponseAndLog(Long accountId, Page<Topic> pageResult) {
+        List<TopicResponse> content = pageResult.stream()
+                .map(TopicMapper::toResponse)
+                .toList();
+        TopicPageResponse response = new TopicPageResponse(
+                content,
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages(),
+                pageResult.getSize(),
+                pageResult.getNumber(),
+                pageResult.isFirst(),
+                pageResult.isLast()
+        );
+        log.info(
+                TopicServiceLogConstants.LIST_TOPICS_BY_ACCOUNT_FLOW_COMPLETED,
+                accountId,
+                pageResult.getTotalElements()
+        );
+        return response;
+    }
+
+    private static Pageable buildTopicListPageable(int pageNumber, int pageSize) {
+        return PageRequest.of(
+                pageNumber,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, TopicPaginationConstants.SORT_PROPERTY_CREATED_AT)
+                        .and(Sort.by(Sort.Direction.DESC, TopicPaginationConstants.SORT_PROPERTY_ID))
+        );
+    }
+
+    private record ResolvedTopicListParams(int page, int size) {
+    }
+
+    private static ResolvedTopicListParams resolveAndAssertTopicListPagination(Integer page, Integer size) {
+        int resolvedPage = page == null ? TopicPaginationConstants.DEFAULT_PAGE_NUMBER : page;
+        int resolvedSize = size == null ? TopicPaginationConstants.DEFAULT_PAGE_SIZE : size;
+        assertTopicListPagination(resolvedPage, resolvedSize);
+        return new ResolvedTopicListParams(resolvedPage, resolvedSize);
+    }
+
+    private Account getAccountOrThrowAndAssertActiveForTopics(Long accountId) {
+        Account account = getAccountOrThrow(accountId);
+        assertAccountActiveForTopicEndpoints(account);
+        return account;
+    }
+
+    private void assertAccountActiveForTopicEndpoints(Account account) {
         if (account.getStatus() != AccountStatusEnum.ACTIVE) {
-            log.warn(TopicServiceLogConstants.CREATE_TOPIC_REJECTED_ACCOUNT_NOT_ACTIVE);
-            throw new AccountException(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_TO_CREATE_TOPIC);
+            log.warn(TopicServiceLogConstants.TOPIC_ENDPOINT_REJECTED_ACCOUNT_NOT_ACTIVE);
+            throw new AccountException(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS);
         }
     }
 
-    private void assertAccountActiveForTopicUpdate(Account account) {
-        if (account.getStatus() != AccountStatusEnum.ACTIVE) {
-            log.warn(TopicServiceLogConstants.UPDATE_TOPIC_REJECTED_ACCOUNT_NOT_ACTIVE);
-            throw new AccountException(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_TO_UPDATE_TOPIC);
+    private static void assertTopicListPagination(int pageNumber, int pageSize) {
+        if (pageNumber < TopicPaginationConstants.MIN_PAGE_NUMBER) {
+            throw new AccountException(TopicValidationConstants.MESSAGE_TOPIC_PAGE_NUMBER_NEGATIVE);
+        }
+        if (pageSize < TopicPaginationConstants.MIN_PAGE_SIZE || pageSize > TopicPaginationConstants.MAX_PAGE_SIZE) {
+            throw new AccountException(
+                    TopicValidationConstants.MESSAGE_TOPIC_PAGE_SIZE_INVALID.formatted(
+                            TopicPaginationConstants.MIN_PAGE_SIZE,
+                            TopicPaginationConstants.MAX_PAGE_SIZE
+                    )
+            );
         }
     }
 

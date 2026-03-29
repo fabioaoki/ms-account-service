@@ -1,19 +1,25 @@
 package br.com.mechanic.account.controller.topic;
 
 import br.com.mechanic.account.constant.ApiPathConstants;
+import br.com.mechanic.account.constant.TopicListQueryConstants;
+import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
+import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.service.request.TopicCreateRequest;
 import br.com.mechanic.account.service.request.TopicUpdateRequest;
+import br.com.mechanic.account.service.response.TopicPageResponse;
 import br.com.mechanic.account.service.response.TopicResponse;
 import br.com.mechanic.account.service.topic.TopicServiceBO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,6 +29,32 @@ import org.springframework.web.bind.annotation.RestController;
 public class TopicController {
 
     private final TopicServiceBO topicServiceBO;
+
+    @GetMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.TOPICS_SEGMENT)
+    public ResponseEntity<TopicPageResponse> getAllByAccountId(
+            @PathVariable Long accountId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(name = TopicListQueryConstants.STATUS, required = false) TopicStatusEnum status,
+            @RequestParam(name = TopicListQueryConstants.PROFILE_TYPE, required = false)
+            AccountProfileTypeEnum profileType
+    ) {
+        TopicPageResponse body = topicServiceBO.getAllByAccountId(accountId, page, size, status, profileType);
+        return ResponseEntity.ok(body);
+    }
+
+    @GetMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPICS_SEGMENT
+                    + ApiPathConstants.TOPIC_ID_PATH_VARIABLE
+    )
+    public ResponseEntity<TopicResponse> getByTopicIdAndAccountId(
+            @PathVariable Long accountId,
+            @PathVariable Long topicId
+    ) {
+        TopicResponse body = topicServiceBO.getByTopicIdAndAccountId(accountId, topicId);
+        return ResponseEntity.ok(body);
+    }
 
     @PostMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.TOPICS_SEGMENT)
     @ResponseStatus(HttpStatus.CREATED)
