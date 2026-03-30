@@ -22,4 +22,6 @@ public interface TopicServiceBO {
             TopicStatusEnum statusFilter,
             AccountProfileTypeEnum profileTypeFilter
     );
+
+    TopicResponse closeTopic(Long accountId, Long topicId);
 }

@@ -61,4 +61,10 @@ public final class TopicValidationConstants {
 
     public static final String MESSAGE_TOPIC_PAGE_NUMBER_NEGATIVE =
             "page number must be zero or greater.";
+
+    public static final String MESSAGE_ANNOTATOR_TOPIC_LIST_CANNOT_COMBINE_WITH_STATUS_FILTER =
+            "Invalid list filters: ANNOTATOR topics have no persisted status; do not send status together with profile_type ANNOTATOR.";
+
+    public static final String MESSAGE_TOPIC_CLOSE_ONLY_ALLOWED_FROM_OPEN =
+            "Topic can be closed only when status is OPEN.";
 }

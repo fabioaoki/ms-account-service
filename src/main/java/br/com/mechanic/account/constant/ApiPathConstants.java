@@ -18,11 +18,19 @@ public final class ApiPathConstants {
 
     public static final String TOPIC_ID_PATH_VARIABLE = "/{topicId}";
 
+    public static final String TOPIC_CLOSE_SEGMENT = "/close";
+
     /**
      * Ex.: {@code /api/v1/accounts/1/topics/42} (PUT parcial por tópico).
      */
     public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN =
             ACCOUNTS_BASE_PATH + "/*/topics/*";
+
+    /**
+     * Ex.: {@code /api/v1/accounts/1/topics/42/close} (PATCH fechar tópico OPEN → CLOSED).
+     */
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_CLOSE_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topics/*/close";
 
     public static final String ACCOUNT_DEACTIVATE_SEGMENT = "/deactivate";
 

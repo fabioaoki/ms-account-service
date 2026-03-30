@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -77,6 +78,20 @@ public class TopicController {
             @RequestBody TopicUpdateRequest request
     ) {
         TopicResponse body = topicServiceBO.update(accountId, topicId, request);
+        return ResponseEntity.ok(body);
+    }
+
+    @PatchMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPICS_SEGMENT
+                    + ApiPathConstants.TOPIC_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPIC_CLOSE_SEGMENT
+    )
+    public ResponseEntity<TopicResponse> closeTopic(
+            @PathVariable Long accountId,
+            @PathVariable Long topicId
+    ) {
+        TopicResponse body = topicServiceBO.closeTopic(accountId, topicId);
         return ResponseEntity.ok(body);
     }
 }

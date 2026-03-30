@@ -8,6 +8,7 @@ import br.com.mechanic.account.constant.EntityConstants;
 import br.com.mechanic.account.constant.TopicValidationConstants;
 import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.topic.Topic;
+import br.com.mechanic.account.entity.topic.TopicHistory;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.AccountStatusEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
@@ -15,6 +16,7 @@ import br.com.mechanic.account.exception.AccountException;
 import br.com.mechanic.account.mapper.topic.TopicMapper;
 import br.com.mechanic.account.repository.account.impl.AccountProfileRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.AccountRepositoryImpl;
+import br.com.mechanic.account.repository.account.impl.TopicHistoryRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
 import br.com.mechanic.account.service.request.TopicCreateRequest;
 import br.com.mechanic.account.service.request.TopicUpdateRequest;
@@ -46,6 +48,7 @@ public class TopicService implements TopicServiceBO {
     private final AccountRepositoryImpl accountRepository;
     private final AccountProfileRepositoryImpl accountProfileRepository;
     private final TopicRepositoryImpl topicRepository;
+    private final TopicHistoryRepositoryImpl topicHistoryRepository;
     private final Clock clock;
 
     @Override
@@ -73,6 +76,9 @@ public class TopicService implements TopicServiceBO {
                 request.endDate()
         );
         Topic saved = topicRepository.save(topic);
+        if (saved.getStatus() != null) {
+            saveTopicStatusHistory(saved, saved.getStatus());
+        }
         log.info(TopicServiceLogConstants.CREATE_TOPIC_FLOW_COMPLETED, accountId, saved.getId());
         return TopicMapper.toResponse(saved);
     }
@@ -142,6 +148,7 @@ public class TopicService implements TopicServiceBO {
             AccountProfileTypeEnum profileTypeFilter
     ) {
         ResolvedTopicListParams params = resolveAndAssertTopicListPagination(page, size);
+        assertTopicListAnnotatorProfileDoesNotCombineWithStatusFilter(statusFilter, profileTypeFilter);
         log.info(
                 TopicServiceLogConstants.LIST_TOPICS_BY_ACCOUNT_FLOW_STARTED,
                 accountId,
@@ -159,6 +166,32 @@ public class TopicService implements TopicServiceBO {
                 pageable
         );
         return mapToTopicPageResponseAndLog(accountId, pageResult);
+    }
+
+    @Override
+    @Transactional
+    public TopicResponse closeTopic(Long accountId, Long topicId) {
+        log.info(TopicServiceLogConstants.CLOSE_TOPIC_FLOW_STARTED, accountId, topicId);
+        getAccountOrThrowAndAssertActiveForTopics(accountId);
+        Topic topic = topicRepository.findByIdAndAccountId(topicId, accountId)
+                .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
+        if (topic.getStatus() != TopicStatusEnum.OPEN) {
+            throw new AccountException(TopicValidationConstants.MESSAGE_TOPIC_CLOSE_ONLY_ALLOWED_FROM_OPEN);
+        }
+        topic.setStatus(TopicStatusEnum.CLOSED);
+        Topic saved = topicRepository.save(topic);
+        saveTopicStatusHistory(saved, TopicStatusEnum.CLOSED);
+        log.info(TopicServiceLogConstants.CLOSE_TOPIC_FLOW_COMPLETED, accountId, saved.getId());
+        return TopicMapper.toResponse(saved);
+    }
+
+    private void saveTopicStatusHistory(Topic topic, TopicStatusEnum status) {
+        topicHistoryRepository.save(
+                TopicHistory.builder()
+                        .topic(topic)
+                        .status(status)
+                        .build()
+        );
     }
 
     private TopicPageResponse mapToTopicPageResponseAndLog(Long accountId, Page<Topic> pageResult) {
@@ -211,6 +244,17 @@ public class TopicService implements TopicServiceBO {
         if (account.getStatus() != AccountStatusEnum.ACTIVE) {
             log.warn(TopicServiceLogConstants.TOPIC_ENDPOINT_REJECTED_ACCOUNT_NOT_ACTIVE);
             throw new AccountException(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS);
+        }
+    }
+
+    private static void assertTopicListAnnotatorProfileDoesNotCombineWithStatusFilter(
+            TopicStatusEnum statusFilter,
+            AccountProfileTypeEnum profileTypeFilter
+    ) {
+        if (profileTypeFilter == AccountProfileTypeEnum.ANNOTATOR && statusFilter != null) {
+            throw new AccountException(
+                    TopicValidationConstants.MESSAGE_ANNOTATOR_TOPIC_LIST_CANNOT_COMBINE_WITH_STATUS_FILTER
+            );
         }
     }
 

@@ -12,6 +12,7 @@ import br.com.mechanic.account.entity.topic.Topic;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.repository.account.jpa.AccountRepositoryJpa;
+import br.com.mechanic.account.repository.account.jpa.TopicHistoryRepository;
 import br.com.mechanic.account.repository.account.jpa.TopicRepositoryJpa;
 import br.com.mechanic.account.service.topic.TopicService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -37,6 +38,7 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -74,6 +76,11 @@ class TopicControllerIntegrationTest {
 
     private static final String END_DATE_INVALID_AFTER_TOPIC_ANCHOR_PLUS_THREE_DAYS = "2026-06-17T12:35:01";
 
+    /**
+     * Alinhado ao {@link Clock} fixo do teste; usado em inserts diretos de {@link Topic} SPEAKER no repositorio.
+     */
+    private static final String SPEAKER_TOPIC_DB_DEFAULT_CREATED_AT = "2026-06-15T12:35:00";
+
     @TestConfiguration
     static class FixedClockConfiguration {
 
@@ -93,6 +100,9 @@ class TopicControllerIntegrationTest {
     @Autowired
     private AccountRepositoryJpa accountRepositoryJpa;
 
+    @Autowired
+    private TopicHistoryRepository topicHistoryRepository;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -109,7 +119,7 @@ class TopicControllerIntegrationTest {
                 endDateJsonSuffix(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY)
         );
 
-        mockMvc.perform(
+        String response = mockMvc.perform(
                         post(accountTopicsPath(accountId))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -123,7 +133,15 @@ class TopicControllerIntegrationTest {
                 .andExpect(jsonPath("$.lastUpdatedAt").doesNotExist())
                 .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()))
                 .andExpect(jsonPath("$.end_date").value(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY))
-                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.SPEAKER.name()));
+                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.SPEAKER.name()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long topicId = objectMapper.readTree(response).get("id").asLong();
+        assertEquals(1L, topicHistoryRepository.countByTopic_Id(topicId));
+        assertEquals(TopicStatusEnum.OPEN, topicHistoryRepository.findByTopic_IdOrderByIdAsc(topicId).get(0).getStatus());
+        assertNotNull(topicHistoryRepository.findByTopic_IdOrderByIdAsc(topicId).get(0).getCreatedAt());
 
         assertEquals(1L, topicRepositoryJpa.countByAccount_Id(accountId));
     }
@@ -248,7 +266,7 @@ class TopicControllerIntegrationTest {
 
         String body = buildTopicCreateJsonImplicitAnnotator("Tema valido", null);
 
-        mockMvc.perform(
+        String response = mockMvc.perform(
                         post(accountTopicsPath(accountId))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body)
@@ -259,7 +277,13 @@ class TopicControllerIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Tema valido"))
                 .andExpect(jsonPath("$.status").doesNotExist())
                 .andExpect(jsonPath("$.end_date").doesNotExist())
-                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.ANNOTATOR.name()));
+                .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.ANNOTATOR.name()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long topicId = objectMapper.readTree(response).get("id").asLong();
+        assertEquals(0L, topicHistoryRepository.countByTopic_Id(topicId));
 
         assertEquals(1L, topicRepositoryJpa.countByAccount_Id(accountId));
     }
@@ -1043,6 +1067,144 @@ class TopicControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET .../topics com profile_type=ANNOTATOR e status juntos retorna 400 (operacao invalida)")
+    void getTopicsWithAnnotatorProfileAndStatusFilterReturnsBadRequest() throws Exception {
+        String email = "topic-ant-st-filt-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(24));
+
+        mockMvc.perform(
+                        get(accountTopicsPath(accountId))
+                                .param(TopicListQueryConstants.PROFILE_TYPE, AccountProfileTypeEnum.ANNOTATOR.name())
+                                .param(TopicListQueryConstants.STATUS, TopicStatusEnum.OPEN.name())
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.message").value(
+                                TopicValidationConstants.MESSAGE_ANNOTATOR_TOPIC_LIST_CANNOT_COMBINE_WITH_STATUS_FILTER
+                        )
+                );
+    }
+
+    @Test
+    @DisplayName("PATCH .../topics/{topicId}/close com topico OPEN retorna 200 e status CLOSED")
+    void closeOpenTopicReturnsOk() throws Exception {
+        String email = "topic-close-ok-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountId);
+
+        assertEquals(1L, topicHistoryRepository.countByTopic_Id(topicId));
+        assertEquals(
+                TopicStatusEnum.OPEN,
+                topicHistoryRepository.findByTopic_IdOrderByIdAsc(topicId).get(0).getStatus()
+        );
+
+        mockMvc.perform(patch(accountTopicClosePath(accountId, topicId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(topicId))
+                .andExpect(jsonPath("$.accountId").value(accountId))
+                .andExpect(jsonPath("$.status").value(TopicStatusEnum.CLOSED.name()))
+                .andExpect(jsonPath("$.lastUpdatedAt").exists());
+
+        assertEquals(2L, topicHistoryRepository.countByTopic_Id(topicId));
+        var historyAfterClose = topicHistoryRepository.findByTopic_IdOrderByIdAsc(topicId);
+        assertEquals(TopicStatusEnum.CLOSED, historyAfterClose.get(1).getStatus());
+        assertNotNull(historyAfterClose.get(1).getCreatedAt());
+    }
+
+    @Test
+    @DisplayName("PATCH .../topics/{topicId}/close com outra conta retorna 400")
+    void closeTopicWithWrongAccountReturnsBadRequest() throws Exception {
+        String emailA = "topic-close-a-" + UUID.randomUUID() + "@email.com";
+        Long accountIdA = createAccountAndGetId(emailA, "Ana", "Alfa", LocalDate.now().minusYears(24));
+        linkProfileForTopicCreation(accountIdA, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountIdA);
+
+        String emailB = "topic-close-b-" + UUID.randomUUID() + "@email.com";
+        Long accountIdB = createAccountAndGetId(emailB, "Bea", "Beta", LocalDate.now().minusYears(26));
+        linkProfileForTopicCreation(accountIdB, AccountProfileTypeEnum.SPEAKER);
+
+        mockMvc.perform(patch(accountTopicClosePath(accountIdB, topicId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
+    }
+
+    @Test
+    @DisplayName("PATCH .../topics/{topicId}/close conta INACTIVE retorna 400")
+    void closeTopicWhenAccountInactiveReturnsBadRequest() throws Exception {
+        String email = "topic-close-inact-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(22));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = createSpeakerTopicViaApi(accountId);
+        mockMvc.perform(patch(accountDeactivatePath(accountId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch(accountTopicClosePath(accountId, topicId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_ACCOUNT_MUST_BE_ACTIVE_FOR_TOPIC_ENDPOINTS));
+    }
+
+    @Test
+    @DisplayName("PATCH .../topics/{topicId}/close com status CANCELED retorna 400")
+    void closeTopicWhenCanceledReturnsBadRequest() throws Exception {
+        String email = "topic-close-can-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = persistSpeakerTopicWithStatus(accountId, TopicStatusEnum.CANCELED);
+
+        mockMvc.perform(patch(accountTopicClosePath(accountId, topicId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_CLOSE_ONLY_ALLOWED_FROM_OPEN));
+    }
+
+    @Test
+    @DisplayName("PATCH .../topics/{topicId}/close com status REVIEWED retorna 400")
+    void closeTopicWhenReviewedReturnsBadRequest() throws Exception {
+        String email = "topic-close-rev-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = persistSpeakerTopicWithStatus(accountId, TopicStatusEnum.REVIEWED);
+
+        mockMvc.perform(patch(accountTopicClosePath(accountId, topicId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_CLOSE_ONLY_ALLOWED_FROM_OPEN));
+    }
+
+    @Test
+    @DisplayName("PATCH .../topics/{topicId}/close com status ja CLOSED retorna 400")
+    void closeTopicWhenAlreadyClosedReturnsBadRequest() throws Exception {
+        String email = "topic-close-clsd-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        linkProfileForTopicCreation(accountId, AccountProfileTypeEnum.SPEAKER);
+        long topicId = persistSpeakerTopicWithStatus(accountId, TopicStatusEnum.CLOSED);
+
+        mockMvc.perform(patch(accountTopicClosePath(accountId, topicId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_CLOSE_ONLY_ALLOWED_FROM_OPEN));
+    }
+
+    @Test
+    @DisplayName("PATCH .../topics/{topicId}/close topico ANNOTATOR sem status retorna 400")
+    void closeAnnotatorTopicWithoutStatusReturnsBadRequest() throws Exception {
+        String email = "topic-close-ant-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email, "nome", "sobrenome", LocalDate.now().minusYears(25));
+        String created = mockMvc.perform(
+                        post(accountTopicsPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildTopicCreateJsonImplicitAnnotator("Só annotator close", null))
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long topicId = objectMapper.readTree(created).get("id").asLong();
+
+        mockMvc.perform(patch(accountTopicClosePath(accountId, topicId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_CLOSE_ONLY_ALLOWED_FROM_OPEN));
+    }
+
+    @Test
     @DisplayName("POST .../topics normaliza tema com espacos nas extremidades")
     void createTopicTrimsTemaEdges() throws Exception {
         String email = "topic-trim-" + UUID.randomUUID() + "@email.com";
@@ -1115,6 +1277,27 @@ class TopicControllerIntegrationTest {
 
     private static String accountTopicItemPath(Long accountId, long topicId) {
         return accountTopicsPath(accountId) + "/" + topicId;
+    }
+
+    private static String accountTopicClosePath(Long accountId, long topicId) {
+        return accountTopicItemPath(accountId, topicId) + ApiPathConstants.TOPIC_CLOSE_SEGMENT;
+    }
+
+    private long persistSpeakerTopicWithStatus(Long accountId, TopicStatusEnum status) {
+        Account account = accountRepositoryJpa.findById(accountId).orElseThrow();
+        LocalDateTime createdAt = LocalDateTime.parse(SPEAKER_TOPIC_DB_DEFAULT_CREATED_AT);
+        LocalDateTime endDate = LocalDateTime.parse(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY);
+        Topic topic = Topic.builder()
+                .account(account)
+                .title("Persistido status " + status.name())
+                .context(null)
+                .createdAt(createdAt)
+                .lastUpdatedAt(null)
+                .status(status)
+                .endDate(endDate)
+                .profileType(AccountProfileTypeEnum.SPEAKER)
+                .build();
+        return topicRepositoryJpa.save(topic).getId();
     }
 
     private long createSpeakerTopicViaApi(Long accountId) throws Exception {

@@ -38,4 +38,10 @@ public final class TopicServiceLogConstants {
 
     public static final String LIST_TOPICS_BY_ACCOUNT_FLOW_COMPLETED =
             "Topic list-by-account flow completed. accountId={} totalElements={}";
+
+    public static final String CLOSE_TOPIC_FLOW_STARTED =
+            "Topic close flow started. accountId={} topicId={}";
+
+    public static final String CLOSE_TOPIC_FLOW_COMPLETED =
+            "Topic close flow completed. accountId={} topicId={}";
 }
