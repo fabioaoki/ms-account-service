@@ -70,4 +70,16 @@ public final class ApiPathConstants {
     public static final String ACCOUNTS_ACCOUNT_ID_GET_ANT_PATTERN = ACCOUNTS_BASE_PATH + "/*";
 
     public static final String ACCOUNTS_WITH_ID_WILDCARD_PATH = ACCOUNTS_BASE_PATH + "/**";
+
+    /**
+     * Listagem de vínculos tópico–anotador pela conta do anotador.
+     * Ex.: {@code /api/v1/accounts/5/topic-annotator-links}.
+     */
+    public static final String TOPIC_ANNOTATOR_LINKS_SEGMENT = "/topic-annotator-links";
+
+    /**
+     * Ex.: {@code /api/v1/accounts/5/topic-annotator-links} (GET; query opcionais {@code topic_id}, {@code topic_owner_account_id}).
+     */
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPIC_ANNOTATOR_LINKS_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topic-annotator-links";
 }

@@ -46,6 +46,11 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN)
                         .permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPIC_ANNOTATOR_LINKS_ANT_PATTERN
+                        )
+                        .permitAll()
                         .requestMatchers(HttpMethod.DELETE, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_PROFILES_ANT_PATTERN)
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_GET_ANT_PATTERN)

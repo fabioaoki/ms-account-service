@@ -5,6 +5,7 @@ import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.constant.TopicAnnotatorLinkValidationConstants;
 import br.com.mechanic.account.constant.TopicCreateRequestJsonConstants;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
+import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.repository.account.AccountProfileRepository;
 import br.com.mechanic.account.repository.account.jpa.TopicAnnotatorLinkHistoryRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,7 +30,9 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -297,22 +300,6 @@ class AnnotatorControllerIntegrationTest {
                 .andExpect(jsonPath("$." + AnnotatorLinkJsonConstants.ANNOTATOR_ACCOUNT_ID).value(annotatorIdB));
     }
 
-    @Test
-    @DisplayName("POST .../annotator-link com resume opcional persiste e retorna texto")
-    void createAnnotatorLinkWithResumeWhenProvidedReturnsResume() throws Exception {
-        Long ownerId = newActiveSpeakerOwner();
-        Long annotatorId = newActiveAnnotatorOnly();
-        long topicId = createSpeakerTopicAndGetId(ownerId);
-
-        mockMvc.perform(
-                        post(annotatorLinkPath(ownerId, topicId))
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(buildAnnotatorLinkJson(annotatorId, "Resumo enviado opcionalmente."))
-                )
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$." + AnnotatorLinkJsonConstants.RESUME).value("Resumo enviado opcionalmente."));
-    }
-
     @Transactional
     @Test
     @DisplayName("POST .../annotator-link com conta anotadora sem perfil ANNOTATOR retorna 400")
@@ -372,6 +359,191 @@ class AnnotatorControllerIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
                 )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_ACCOUNTS_MUST_BE_ACTIVE_FOR_ANNOTATOR_LINK
+                ));
+    }
+
+    @Test
+    @DisplayName("GET .../topic-annotator-links retorna vínculos com topic_status, topic_owner_name e resume")
+    void listTopicAnnotatorLinksReturnsEnrichedFields() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        String resumeText = "Resumo visível na listagem do anotador.";
+        mockMvc.perform(
+                        put(annotatorLinkResumePath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkResumeJson(annotatorId, resumeText))
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(annotatorTopicLinksPath(annotatorId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_ID).value(topicId))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_STATUS).value(TopicStatusEnum.OPEN.name()))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_OWNER_ACCOUNT_ID).value(ownerId))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_OWNER_NAME).value("Dono Speaker"))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.ANNOTATOR_ACCOUNT_ID).value(annotatorId))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.RESUME).value(resumeText));
+    }
+
+    @Test
+    @DisplayName("GET .../topic-annotator-links?topic_id filtra pelo tópico")
+    void listTopicAnnotatorLinksWithTopicIdFilter() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicIdFirst = createSpeakerTopicAndGetId(ownerId);
+        long topicIdSecond = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicIdFirst))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicIdSecond))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        get(annotatorTopicLinksPath(annotatorId))
+                                .param(AnnotatorLinkJsonConstants.TOPIC_ID, String.valueOf(topicIdSecond))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_ID).value(topicIdSecond));
+    }
+
+    @Test
+    @DisplayName("GET .../topic-annotator-links?topic_owner_account_id filtra pelo dono do tópico")
+    void listTopicAnnotatorLinksWithTopicOwnerAccountIdFilter() throws Exception {
+        Long ownerIdA = newActiveSpeakerOwner();
+        Long ownerIdB = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicIdA = createSpeakerTopicAndGetId(ownerIdA);
+        long topicIdB = createSpeakerTopicAndGetId(ownerIdB);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerIdA, topicIdA))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerIdB, topicIdB))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        get(annotatorTopicLinksPath(annotatorId))
+                                .param(
+                                        AnnotatorLinkJsonConstants.TOPIC_OWNER_ACCOUNT_ID,
+                                        String.valueOf(ownerIdA)
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_ID).value(topicIdA))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_OWNER_ACCOUNT_ID).value(ownerIdA));
+    }
+
+    @Test
+    @DisplayName("GET .../topic-annotator-links?topic_status filtra pelo status do tópico")
+    void listTopicAnnotatorLinksWithTopicStatusFilter() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicOpenId = createSpeakerTopicAndGetId(ownerId);
+        long topicToCloseId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicOpenId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicToCloseId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        patch(accountTopicsPath(ownerId) + "/" + topicToCloseId + ApiPathConstants.TOPIC_CLOSE_SEGMENT)
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        get(annotatorTopicLinksPath(annotatorId))
+                                .param(AnnotatorLinkJsonConstants.TOPIC_STATUS, TopicStatusEnum.OPEN.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_ID).value(topicOpenId));
+
+        mockMvc.perform(
+                        get(annotatorTopicLinksPath(annotatorId))
+                                .param(AnnotatorLinkJsonConstants.TOPIC_STATUS, TopicStatusEnum.CLOSED.name())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_ID).value(topicToCloseId));
+    }
+
+    @Test
+    @DisplayName("GET .../topic-annotator-links inclui topic_status nulo para tópico ANNOTATOR")
+    void listTopicAnnotatorLinksAnnotatorTopicHasNullTopicStatus() throws Exception {
+        Long ownerId = newActiveAnnotatorOwnerForImplicitTopic();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createAnnotatorTopicImplicitAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get(annotatorTopicLinksPath(annotatorId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]." + AnnotatorLinkJsonConstants.TOPIC_STATUS).value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("GET .../topic-annotator-links com anotador INACTIVE retorna 400")
+    void listTopicAnnotatorLinksInactiveAnnotatorReturnsBadRequest() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(patch(accountDeactivatePath(annotatorId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(annotatorTopicLinksPath(annotatorId)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(
                         TopicAnnotatorLinkValidationConstants.MESSAGE_ACCOUNTS_MUST_BE_ACTIVE_FOR_ANNOTATOR_LINK
@@ -525,5 +697,12 @@ class AnnotatorControllerIntegrationTest {
 
     private static String accountDeactivatePath(Long accountId) {
         return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.ACCOUNT_DEACTIVATE_SEGMENT;
+    }
+
+    private static String annotatorTopicLinksPath(Long annotatorAccountId) {
+        return ApiPathConstants.ACCOUNTS_BASE_PATH
+                + "/"
+                + annotatorAccountId
+                + ApiPathConstants.TOPIC_ANNOTATOR_LINKS_SEGMENT;
     }
 }

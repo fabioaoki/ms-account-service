@@ -20,4 +20,7 @@ public final class TopicCreateRequestJsonConstants {
     public static final String END_DATE = "end_date";
 
     public static final String LAST_UPDATED_AT = "lastUpdatedAt";
+
+    /** Nome formatado do criador do tópico ({@code account.name}), presente em {@link br.com.mechanic.account.service.response.TopicResponse}. */
+    public static final String ACCOUNT_NAME = "account_name";
 }

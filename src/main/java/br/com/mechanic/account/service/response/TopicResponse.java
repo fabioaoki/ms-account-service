@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 public record TopicResponse(
         Long id,
         Long accountId,
+        @JsonProperty(TopicCreateRequestJsonConstants.ACCOUNT_NAME)
+        String accountName,
         String title,
         @JsonProperty(TopicCreateRequestJsonConstants.CONTEXT)
         String context,

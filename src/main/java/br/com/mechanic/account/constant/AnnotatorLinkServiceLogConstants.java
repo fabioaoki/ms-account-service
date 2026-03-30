@@ -17,4 +17,7 @@ public final class AnnotatorLinkServiceLogConstants {
 
     public static final String UPDATE_LINK_RESUME_FLOW_COMPLETED =
             "Topic annotator link resume update completed. linkId={} topicId={}";
+
+    public static final String LIST_LINKS_FOR_ANNOTATOR_FLOW_STARTED =
+            "Topic annotator links list for annotator started. annotatorAccountId={} topicIdFilter={} topicOwnerAccountIdFilter={} topicStatusFilter={}";
 }

@@ -1,7 +1,10 @@
 package br.com.mechanic.account.repository.account.impl;
 
 import br.com.mechanic.account.entity.topic.TopicAnnotatorLink;
+import br.com.mechanic.account.enuns.TopicStatusEnum;
+import org.springframework.data.domain.Sort;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface TopicAnnotatorLinkRepositoryImpl {
@@ -11,4 +14,12 @@ public interface TopicAnnotatorLinkRepositoryImpl {
     boolean existsByTopicIdAndAnnotatorAccountId(Long topicId, Long annotatorAccountId);
 
     Optional<TopicAnnotatorLink> findByTopicIdAndAnnotatorAccountId(Long topicId, Long annotatorAccountId);
+
+    List<TopicAnnotatorLink> findAllByAnnotatorAccountIdWithOptionalFilters(
+            Long annotatorAccountId,
+            Long topicIdOrNull,
+            Long topicOwnerAccountIdOrNull,
+            TopicStatusEnum topicStatusOrNull,
+            Sort sort
+    );
 }

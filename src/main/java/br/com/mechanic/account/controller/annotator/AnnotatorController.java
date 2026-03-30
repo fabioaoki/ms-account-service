@@ -1,21 +1,28 @@
 package br.com.mechanic.account.controller.annotator;
 
+import br.com.mechanic.account.constant.AnnotatorLinkJsonConstants;
 import br.com.mechanic.account.constant.ApiPathConstants;
+import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.service.annotator.AnnotatorLinkServiceBO;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkCreateRequest;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkResumeUpdateRequest;
+import br.com.mechanic.account.service.response.TopicAnnotatorLinkAnnotatorListItemResponse;
 import br.com.mechanic.account.service.response.TopicAnnotatorLinkResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -23,6 +30,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class AnnotatorController {
 
     private final AnnotatorLinkServiceBO annotatorLinkServiceBO;
+
+    @GetMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.TOPIC_ANNOTATOR_LINKS_SEGMENT
+    )
+    public ResponseEntity<List<TopicAnnotatorLinkAnnotatorListItemResponse>> listTopicAnnotatorLinksForAnnotator(
+            @PathVariable Long accountId,
+            @RequestParam(name = AnnotatorLinkJsonConstants.TOPIC_ID, required = false) Long topicId,
+            @RequestParam(name = AnnotatorLinkJsonConstants.TOPIC_OWNER_ACCOUNT_ID, required = false)
+            Long topicOwnerAccountId,
+            @RequestParam(name = AnnotatorLinkJsonConstants.TOPIC_STATUS, required = false)
+            TopicStatusEnum topicStatus
+    ) {
+        return ResponseEntity.ok(annotatorLinkServiceBO.listLinksForAnnotatorView(
+                accountId,
+                topicId,
+                topicOwnerAccountId,
+                topicStatus
+        ));
+    }
 
     @PostMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE

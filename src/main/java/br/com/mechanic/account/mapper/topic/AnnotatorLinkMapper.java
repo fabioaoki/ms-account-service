@@ -4,6 +4,7 @@ import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.topic.Topic;
 import br.com.mechanic.account.entity.topic.TopicAnnotatorLink;
 import br.com.mechanic.account.entity.topic.TopicAnnotatorLinkHistory;
+import br.com.mechanic.account.service.response.TopicAnnotatorLinkAnnotatorListItemResponse;
 import br.com.mechanic.account.service.response.TopicAnnotatorLinkResponse;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -18,6 +19,21 @@ public final class AnnotatorLinkMapper {
                 link.getId(),
                 link.getTopic().getId(),
                 link.getTopicOwnerAccount().getId(),
+                link.getAnnotatorAccount().getId(),
+                link.getResume(),
+                link.getCreatedAt(),
+                link.getLastUpdatedAt()
+        );
+    }
+
+    public static TopicAnnotatorLinkAnnotatorListItemResponse toAnnotatorListItem(TopicAnnotatorLink link) {
+        Account owner = link.getTopicOwnerAccount();
+        return new TopicAnnotatorLinkAnnotatorListItemResponse(
+                link.getId(),
+                link.getTopic().getId(),
+                link.getTopic().getStatus(),
+                owner.getId(),
+                owner.getName(),
                 link.getAnnotatorAccount().getId(),
                 link.getResume(),
                 link.getCreatedAt(),

@@ -54,6 +54,7 @@ public final class TopicMapper {
         return new TopicResponse(
                 topic.getId(),
                 topic.getAccount().getId(),
+                topic.getAccount().getName(),
                 topic.getTitle(),
                 topic.getContext(),
                 topic.getCreatedAt(),

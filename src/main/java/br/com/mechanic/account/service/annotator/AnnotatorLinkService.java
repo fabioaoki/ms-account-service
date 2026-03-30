@@ -3,6 +3,7 @@ package br.com.mechanic.account.service.annotator;
 import br.com.mechanic.account.constant.AccountUpdateValidationConstants;
 import br.com.mechanic.account.constant.AnnotatorLinkServiceLogConstants;
 import br.com.mechanic.account.constant.TopicAnnotatorLinkValidationConstants;
+import br.com.mechanic.account.constant.TopicPaginationConstants;
 import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.topic.Topic;
 import br.com.mechanic.account.entity.topic.TopicAnnotatorLink;
@@ -19,14 +20,17 @@ import br.com.mechanic.account.repository.account.impl.TopicAnnotatorLinkReposit
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkCreateRequest;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkResumeUpdateRequest;
+import br.com.mechanic.account.service.response.TopicAnnotatorLinkAnnotatorListItemResponse;
 import br.com.mechanic.account.service.response.TopicAnnotatorLinkResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -82,14 +86,13 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
             throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_ANNOTATOR_LINK_PAIR_ALREADY_EXISTS);
         }
 
-        String normalizedResumeOrNull = normalizeResumeIfPresent(request.resume());
         LocalDateTime creationTimestamp = LocalDateTime.now(clock);
 
         TopicAnnotatorLink link = AnnotatorLinkMapper.toEntityForPersist(
                 topic,
                 topicOwnerAccount,
                 annotatorAccount,
-                normalizedResumeOrNull,
+                null,
                 creationTimestamp
         );
 
@@ -98,7 +101,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
         TopicAnnotatorLinkHistory history = AnnotatorLinkMapper.toInitialHistoryEntity(
                 saved,
                 annotatorAccount,
-                normalizedResumeOrNull,
+                null,
                 creationTimestamp
         );
         topicAnnotatorLinkHistoryRepository.save(history);
@@ -170,6 +173,33 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
         return AnnotatorLinkMapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TopicAnnotatorLinkAnnotatorListItemResponse> listLinksForAnnotatorView(
+            Long annotatorAccountId,
+            Long topicId,
+            Long topicOwnerAccountId,
+            TopicStatusEnum topicStatus
+    ) {
+        log.info(
+                AnnotatorLinkServiceLogConstants.LIST_LINKS_FOR_ANNOTATOR_FLOW_STARTED,
+                annotatorAccountId,
+                topicId,
+                topicOwnerAccountId,
+                topicStatus
+        );
+        getAccountOrThrowAndAssertActiveForAnnotatorLink(annotatorAccountId);
+        Sort sort = Sort.by(Sort.Direction.DESC, TopicPaginationConstants.SORT_PROPERTY_CREATED_AT);
+        List<TopicAnnotatorLink> links = topicAnnotatorLinkRepository.findAllByAnnotatorAccountIdWithOptionalFilters(
+                annotatorAccountId,
+                topicId,
+                topicOwnerAccountId,
+                topicStatus,
+                sort
+        );
+        return links.stream().map(AnnotatorLinkMapper::toAnnotatorListItem).toList();
+    }
+
     /**
      * Criar vínculo: tópicos ANNOTATOR não usam status de workflow ({@code null}); demais exigem {@link TopicStatusEnum#OPEN}.
      */
@@ -201,28 +231,6 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
             throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_ACCOUNTS_MUST_BE_ACTIVE_FOR_ANNOTATOR_LINK);
         }
         return account;
-    }
-
-    /**
-     * Quando houver endpoint dedicado ao resumo, este método continuará centralizando trim + teto de tamanho.
-     * Ausência ou branco após trim → {@code null} (não obrigatório neste POST).
-     */
-    private static String normalizeResumeIfPresent(String rawResume) {
-        if (rawResume == null) {
-            return null;
-        }
-        String trimmed = rawResume.trim();
-        if (trimmed.isEmpty()) {
-            return null;
-        }
-        if (trimmed.length() > TopicAnnotatorLinkValidationConstants.MAX_RESUME_CHAR_COUNT) {
-            throw new AccountException(
-                    TopicAnnotatorLinkValidationConstants.MESSAGE_RESUME_EXCEEDS_MAX_LENGTH.formatted(
-                            TopicAnnotatorLinkValidationConstants.MAX_RESUME_CHAR_COUNT
-                    )
-            );
-        }
-        return trimmed;
     }
 
     private static String normalizeResumeRequired(String rawResume) {

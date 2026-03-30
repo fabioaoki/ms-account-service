@@ -1,9 +1,9 @@
 {
   "info": {
     "name": "ms-account-service",
-    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (vinculo topico-anotador), TopicController (topicos).",
+    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.18.0"
+    "version": "1.22.0"
   },
   "item": [
     {
@@ -387,8 +387,78 @@
     },
     {
       "name": "AnnotatorController",
-      "description": "br.com.mechanic.account.controller.annotator.AnnotatorController — POST cria vínculo; PUT .../annotator-link/resume atualiza o resumo (append em topic_annotator_link_history). Dono e anotador ACTIVE; deve existir topic_annotator_link para (topicId, annotator_account_id); tópicos com workflow só com OPEN para vínculo e para atualizar resumo. Topico ANNOTATOR sem status OPEN na regra de resumo.",
+      "description": "br.com.mechanic.account.controller.annotator.AnnotatorController — POST cria vínculo; PUT .../annotator-link/resume atualiza o resumo; GET .../topic-annotator-links lista vínculos do anotador (conta no path ACTIVE). Query opcionais: topic_id, topic_owner_account_id, topic_status (enum TopicStatusEnum, ex. OPEN, CLOSED; AND com demais filtros). Resposta enriquecida: topic_status, topic_owner_name, resume, timestamps. Não valida dono do tópico ACTIVE nem status do tópico para autorizar a listagem.",
       "item": [
+        {
+          "name": "Listar vínculos do anotador (GET /api/v1/accounts/{annotatorAccountId}/topic-annotator-links)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{annotatorAccountId}}/topic-annotator-links",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts", "{{annotatorAccountId}}", "topic-annotator-links"],
+              "query": [
+                {
+                  "key": "topic_id",
+                  "value": "{{topicId}}",
+                  "description": "Opcional. Filtra por id do tópico (snake_case, alinhado ao @RequestParam do controller).",
+                  "disabled": true
+                },
+                {
+                  "key": "topic_owner_account_id",
+                  "value": "{{accountId}}",
+                  "description": "Opcional. Filtra pela conta dona do tópico. Use a mesma variável que no POST do vínculo (dono = accountId no path de .../topics/...).",
+                  "disabled": true
+                },
+                {
+                  "key": "topic_status",
+                  "value": "{{topicStatus}}",
+                  "description": "Opcional. Valor do enum (ex. OPEN, CLOSED). Tópicos ANNOTATOR sem status na base não casam com valores não-nulos.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Path: /api/v1/accounts/{{annotatorAccountId}}/topic-annotator-links — `annotatorAccountId` (coleção) = conta do **anotador** (obrigatório ACTIVE). Query opcionais em snake_case: `topic_id`, `topic_owner_account_id`, `topic_status` (AND entre todos os parâmetros informados). Sem filtros: todos os registros em `topic_annotator_link` com `annotator_account_id` = path.\n\nResposta: JSON array de itens com `id`, `topic_id`, `topic_status` (pode ser null no JSON de resposta), `topic_owner_account_id`, `topic_owner_name`, `annotator_account_id`, `resume`, `created_at`, `last_updated_at`. Ordenação: `created_at` DESC.\n\nDica: rode antes o POST .../annotator-link com os mesmos `accountId` (dono), `topicId` e `annotatorAccountId` da coleção para popular dados."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('annotatorAccountId')) {",
+                  "  pm.collectionVariables.set('annotatorAccountId', '2');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Corpo é array JSON', function () { pm.expect(body).to.be.an('array'); });",
+                  "if (body.length > 0) {",
+                  "  const row = body[0];",
+                  "  pm.test('Primeiro item: campos snake_case do contrato', function () {",
+                  "    pm.expect(row).to.have.property('id');",
+                  "    pm.expect(row).to.have.property('topic_id');",
+                  "    pm.expect(row).to.have.property('topic_status');",
+                  "    pm.expect(row).to.have.property('topic_owner_account_id');",
+                  "    pm.expect(row).to.have.property('topic_owner_name');",
+                  "    pm.expect(row).to.have.property('annotator_account_id');",
+                  "    pm.expect(row.annotator_account_id).to.eql(Number(pm.collectionVariables.get('annotatorAccountId')));",
+                  "    pm.expect(row).to.have.property('created_at');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "Vincular anotador ao topico (POST .../topics/{topicId}/annotator-link)",
           "request": {
@@ -416,7 +486,7 @@
               "mode": "raw",
               "raw": "{\n  \"annotator_account_id\": {{annotatorAccountId}}\n}"
             },
-            "description": "Corpo minimo: annotator_account_id (snake_case). Opcional: \"resume\" (texto grande); se omitido, gravado null ate fluxo futuro.\n\nRegras resumidas: topico deve pertencer a accountId; dono e anotador ACTIVE; anotador com perfil ANNOTATOR; se profile_type do topico nao for ANNOTATOR, annotator_account_id deve ser diferente do dono; par (topicId, annotator) unico.\n\nResposta 201: id, topic_id, topic_owner_account_id, annotator_account_id, resume (se houver), created_at, last_updated_at (null no create)."
+            "description": "Corpo: somente annotator_account_id (snake_case). Resumo: use PUT .../annotator-link/resume.\n\nRegras: topico da conta; dono e anotador ACTIVE; anotador perfil ANNOTATOR; se profile_type do topico nao for ANNOTATOR, annotator_account_id != dono; par (topicId, annotator) unico.\n\nResposta 201: resume omitido ate o PUT; created_at; last_updated_at null no create."
           },
           "event": [
             {
@@ -451,71 +521,6 @@
                   "  pm.expect(json.created_at).to.be.a('string');",
                   "});",
                   "pm.environment.set('topicAnnotatorLinkId', json.id);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Vincular anotador (com resume opcional)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/annotator-link",
-              "host": ["{{baseUrl}}"],
-              "path": [
-                "api",
-                "v1",
-                "accounts",
-                "{{accountId}}",
-                "topics",
-                "{{topicId}}",
-                "annotator-link"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"annotator_account_id\": {{annotatorAccountId}},\n  \"resume\": \"{{annotatorLinkResume}}\"\n}"
-            },
-            "description": "Mesmo endpoint com campo resume preenchido (opcional). Ajuste annotatorAccountId para um anotador ainda nao vinculado a este topicId, ou use outro topicId."
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (!pm.collectionVariables.get('annotatorLinkResume')) {",
-                  "  pm.collectionVariables.set('annotatorLinkResume', 'Resumo opcional via Postman.');",
-                  "}",
-                  "if (!pm.environment.get('accountId')) {",
-                  "  pm.environment.set('accountId', 1);",
-                  "}",
-                  "if (!pm.environment.get('topicId')) {",
-                  "  pm.environment.set('topicId', 1);",
-                  "}",
-                  "if (!pm.collectionVariables.get('annotatorAccountId')) {",
-                  "  pm.collectionVariables.set('annotatorAccountId', '2');",
-                  "}"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
-                  "const json = pm.response.json();",
-                  "pm.test('resume retornado', function () {",
-                  "  pm.expect(json.resume).to.eql(pm.collectionVariables.get('annotatorLinkResume'));",
-                  "});"
                 ]
               }
             }
@@ -1082,12 +1087,13 @@
       "value": "SPEAKER"
     },
     {
-      "key": "annotatorAccountId",
-      "value": "2"
+      "key": "topicId",
+      "value": "1",
+      "description": "Id do tópico (path POST vínculo e query opcional GET topic-annotator-links)."
     },
     {
-      "key": "annotatorLinkResume",
-      "value": "Resumo opcional via Postman."
+      "key": "annotatorAccountId",
+      "value": "2"
     },
     {
       "key": "annotatorLinkResumeUpdate",

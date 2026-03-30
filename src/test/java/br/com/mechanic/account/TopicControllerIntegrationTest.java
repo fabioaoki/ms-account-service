@@ -127,6 +127,7 @@ class TopicControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.accountId").value(accountId))
+                .andExpect(jsonPath("$." + TopicCreateRequestJsonConstants.ACCOUNT_NAME).value("Nome Sobrenome"))
                 .andExpect(jsonPath("$.title").value("Tema valido para o topico"))
                 .andExpect(jsonPath("$.context").doesNotExist())
                 .andExpect(jsonPath("$.createdAt").exists())
@@ -860,6 +861,7 @@ class TopicControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(topicId))
                 .andExpect(jsonPath("$.accountId").value(accountId))
+                .andExpect(jsonPath("$." + TopicCreateRequestJsonConstants.ACCOUNT_NAME).value("Nome Sobrenome"))
                 .andExpect(jsonPath("$.title").value("Topico api"))
                 .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()));
     }
