@@ -44,4 +44,10 @@ public final class TopicAnnotatorLinkValidationConstants {
      */
     public static final String MESSAGE_TOPIC_MUST_BE_OPEN_FOR_ANNOTATOR_LINK =
             "Annotator links can only be created for topics with status OPEN.";
+
+    public static final String MESSAGE_TOPIC_MUST_BE_OPEN_FOR_ANNOTATOR_LINK_RESUME =
+            "The topic resume can only be updated when the topic status is OPEN.";
+
+    public static final String MESSAGE_TOPIC_ANNOTATOR_LINK_NOT_FOUND_FOR_RESUME =
+            "No annotator link exists for this topic and annotator account.";
 }

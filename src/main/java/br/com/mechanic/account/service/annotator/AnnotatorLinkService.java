@@ -18,6 +18,7 @@ import br.com.mechanic.account.repository.account.impl.TopicAnnotatorLinkHistory
 import br.com.mechanic.account.repository.account.impl.TopicAnnotatorLinkRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkCreateRequest;
+import br.com.mechanic.account.service.request.TopicAnnotatorLinkResumeUpdateRequest;
 import br.com.mechanic.account.service.response.TopicAnnotatorLinkResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +60,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
                         TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED_FOR_LINK
                 ));
 
-        assertTopicAcceptsAnnotatorLink(topic);
+        assertTopicOpenForNonAnnotatorProfileOrSkipAnnotatorWorkflow(topic);
 
         Account annotatorAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(request.annotatorAccountId());
 
@@ -107,15 +108,89 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
         return AnnotatorLinkMapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional
+    public TopicAnnotatorLinkResponse updateLinkResume(
+            Long topicOwnerAccountId,
+            Long topicId,
+            TopicAnnotatorLinkResumeUpdateRequest request
+    ) {
+        log.info(
+                AnnotatorLinkServiceLogConstants.UPDATE_LINK_RESUME_FLOW_STARTED,
+                topicOwnerAccountId,
+                topicId,
+                request.annotatorAccountId()
+        );
+
+        Account topicOwnerAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(topicOwnerAccountId);
+        Topic topic = topicRepository.findByIdAndAccountId(topicId, topicOwnerAccountId)
+                .orElseThrow(() -> new AccountException(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED_FOR_LINK
+                ));
+
+        assertTopicOpenForResumeUpdate(topic);
+
+        Account annotatorAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(request.annotatorAccountId());
+
+        if (!accountProfileRepository.existsByAccountIdAndProfileType(
+                annotatorAccount.getId(),
+                AccountProfileTypeEnum.ANNOTATOR
+        )) {
+            throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_ANNOTATOR_MUST_HAVE_ANNOTATOR_PROFILE);
+        }
+
+        TopicAnnotatorLink link = topicAnnotatorLinkRepository
+                .findByTopicIdAndAnnotatorAccountId(topic.getId(), annotatorAccount.getId())
+                .orElseThrow(() -> new AccountException(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_ANNOTATOR_LINK_NOT_FOUND_FOR_RESUME
+                ));
+
+        if (!link.getTopicOwnerAccount().getId().equals(topicOwnerAccount.getId())) {
+            throw new AccountException(
+                    TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_ANNOTATOR_LINK_NOT_FOUND_FOR_RESUME
+            );
+        }
+
+        String normalizedResume = normalizeResumeRequired(request.resume());
+        LocalDateTime historyTimestamp = LocalDateTime.now(clock);
+
+        AnnotatorLinkMapper.applyResumeToLink(link, normalizedResume);
+        TopicAnnotatorLink saved = topicAnnotatorLinkRepository.save(link);
+
+        TopicAnnotatorLinkHistory history = AnnotatorLinkMapper.toInitialHistoryEntity(
+                saved,
+                annotatorAccount,
+                normalizedResume,
+                historyTimestamp
+        );
+        topicAnnotatorLinkHistoryRepository.save(history);
+
+        log.info(AnnotatorLinkServiceLogConstants.UPDATE_LINK_RESUME_FLOW_COMPLETED, saved.getId(), topicId);
+
+        return AnnotatorLinkMapper.toResponse(saved);
+    }
+
     /**
-     * Tópicos ANNOTATOR não usam status de workflow ({@code null}); demais perfis exigem {@link TopicStatusEnum#OPEN}.
+     * Criar vínculo: tópicos ANNOTATOR não usam status de workflow ({@code null}); demais exigem {@link TopicStatusEnum#OPEN}.
      */
-    private static void assertTopicAcceptsAnnotatorLink(Topic topic) {
+    private static void assertTopicOpenForNonAnnotatorProfileOrSkipAnnotatorWorkflow(Topic topic) {
         if (topic.getProfileType() == AccountProfileTypeEnum.ANNOTATOR) {
             return;
         }
         if (topic.getStatus() != TopicStatusEnum.OPEN) {
             throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_MUST_BE_OPEN_FOR_ANNOTATOR_LINK);
+        }
+    }
+
+    /**
+     * Atualizar resumo: para tópicos com workflow, apenas {@link TopicStatusEnum#OPEN}; tópicos ANNOTATOR sem status não são bloqueados.
+     */
+    private static void assertTopicOpenForResumeUpdate(Topic topic) {
+        if (topic.getProfileType() == AccountProfileTypeEnum.ANNOTATOR) {
+            return;
+        }
+        if (topic.getStatus() != TopicStatusEnum.OPEN) {
+            throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_MUST_BE_OPEN_FOR_ANNOTATOR_LINK_RESUME);
         }
     }
 
@@ -139,6 +214,24 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
         String trimmed = rawResume.trim();
         if (trimmed.isEmpty()) {
             return null;
+        }
+        if (trimmed.length() > TopicAnnotatorLinkValidationConstants.MAX_RESUME_CHAR_COUNT) {
+            throw new AccountException(
+                    TopicAnnotatorLinkValidationConstants.MESSAGE_RESUME_EXCEEDS_MAX_LENGTH.formatted(
+                            TopicAnnotatorLinkValidationConstants.MAX_RESUME_CHAR_COUNT
+                    )
+            );
+        }
+        return trimmed;
+    }
+
+    private static String normalizeResumeRequired(String rawResume) {
+        if (rawResume == null) {
+            throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_RESUME_REQUIRED);
+        }
+        String trimmed = rawResume.trim();
+        if (trimmed.isEmpty()) {
+            throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_RESUME_REQUIRED);
         }
         if (trimmed.length() > TopicAnnotatorLinkValidationConstants.MAX_RESUME_CHAR_COUNT) {
             throw new AccountException(

@@ -3,7 +3,7 @@
     "name": "ms-account-service",
     "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (vinculo topico-anotador), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.17.0"
+    "version": "1.18.0"
   },
   "item": [
     {
@@ -387,7 +387,7 @@
     },
     {
       "name": "AnnotatorController",
-      "description": "br.com.mechanic.account.controller.annotator.AnnotatorController — POST vincula um anotador a um topico da conta (accountId no path = dono do topico). Topicos com status (ex. SPEAKER): so com status OPEN — CLOSED/CANCELED/REVIEWED retorna 400. Topico profile ANNOTATOR (sem status de workflow): pode vincular. Varios anotadores diferentes por topico; par (topico, anotador) unico. Conta ACTIVE; anotador com perfil ANNOTATOR. resume opcional.",
+      "description": "br.com.mechanic.account.controller.annotator.AnnotatorController — POST cria vínculo; PUT .../annotator-link/resume atualiza o resumo (append em topic_annotator_link_history). Dono e anotador ACTIVE; deve existir topic_annotator_link para (topicId, annotator_account_id); tópicos com workflow só com OPEN para vínculo e para atualizar resumo. Topico ANNOTATOR sem status OPEN na regra de resumo.",
       "item": [
         {
           "name": "Vincular anotador ao topico (POST .../topics/{topicId}/annotator-link)",
@@ -515,6 +515,73 @@
                   "const json = pm.response.json();",
                   "pm.test('resume retornado', function () {",
                   "  pm.expect(json.resume).to.eql(pm.collectionVariables.get('annotatorLinkResume'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar resumo do vínculo (PUT .../annotator-link/resume)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/annotator-link/resume",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}",
+                "annotator-link",
+                "resume"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"annotator_account_id\": {{annotatorAccountId}},\n  \"resume\": \"{{annotatorLinkResumeUpdate}}\"\n}"
+            },
+            "description": "Obrigatório: annotator_account_id e resume (texto grande). Pré-requisito: POST .../annotator-link com o mesmo par (topicId, annotator). Dono do tópico ACTIVE; tópico OPEN (se tiver workflow); anotador ACTIVE. Resposta 200 TopicAnnotatorLinkResponse com last_updated_at e resume."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('annotatorLinkResumeUpdate')) {",
+                  "  pm.collectionVariables.set('annotatorLinkResumeUpdate', 'Resumo atualizado via PUT resume.');",
+                  "}",
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.environment.get('topicId')) {",
+                  "  pm.environment.set('topicId', 1);",
+                  "}",
+                  "if (!pm.collectionVariables.get('annotatorAccountId')) {",
+                  "  pm.collectionVariables.set('annotatorAccountId', '2');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('resume e last_updated_at', function () {",
+                  "  pm.expect(json.resume).to.eql(pm.collectionVariables.get('annotatorLinkResumeUpdate'));",
+                  "  pm.expect(json.last_updated_at).to.be.a('string');",
                   "});"
                 ]
               }
@@ -1021,6 +1088,10 @@
     {
       "key": "annotatorLinkResume",
       "value": "Resumo opcional via Postman."
+    },
+    {
+      "key": "annotatorLinkResumeUpdate",
+      "value": "Resumo atualizado via PUT resume."
     }
   ]
 }

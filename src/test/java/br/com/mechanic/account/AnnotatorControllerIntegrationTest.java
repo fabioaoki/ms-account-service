@@ -32,6 +32,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -94,6 +95,83 @@ class AnnotatorControllerIntegrationTest {
 
         long linkId = objectMapper.readTree(response).get(AnnotatorLinkJsonConstants.ID).asLong();
         assertEquals(1L, topicAnnotatorLinkHistoryRepository.countByLink_Id(linkId));
+    }
+
+    @Test
+    @DisplayName("PUT .../annotator-link/resume persiste texto, last_updated_at e nova linha no histórico")
+    void updateAnnotatorLinkResumeReturnsOkAndAppendsHistory() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        String resumeText = "Resumo completo enviado via PUT resume.";
+        String response = mockMvc.perform(
+                        put(annotatorLinkResumePath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkResumeJson(annotatorId, resumeText))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$." + AnnotatorLinkJsonConstants.RESUME).value(resumeText))
+                .andExpect(jsonPath("$." + AnnotatorLinkJsonConstants.LAST_UPDATED_AT).exists())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long linkId = objectMapper.readTree(response).get(AnnotatorLinkJsonConstants.ID).asLong();
+        assertEquals(2L, topicAnnotatorLinkHistoryRepository.countByLink_Id(linkId));
+    }
+
+    @Test
+    @DisplayName("PUT .../annotator-link/resume com tópico SPEAKER CLOSED retorna 400")
+    void updateAnnotatorLinkResumeWhenTopicClosedReturnsBadRequest() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(patch(accountTopicsPath(ownerId) + "/" + topicId + ApiPathConstants.TOPIC_CLOSE_SEGMENT))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        put(annotatorLinkResumePath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkResumeJson(annotatorId, "Tentativa apos fechar"))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_MUST_BE_OPEN_FOR_ANNOTATOR_LINK_RESUME
+                ));
+    }
+
+    @Test
+    @DisplayName("PUT .../annotator-link/resume sem vínculo para o anotador retorna 400")
+    void updateAnnotatorLinkResumeWhenLinkMissingReturnsBadRequest() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        put(annotatorLinkResumePath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkResumeJson(annotatorId, "Sem link"))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_ANNOTATOR_LINK_NOT_FOUND_FOR_RESUME
+                ));
     }
 
     @Test
@@ -425,12 +503,20 @@ class AnnotatorControllerIntegrationTest {
                 );
     }
 
+    private static String buildAnnotatorLinkResumeJson(Long annotatorAccountId, String resume) {
+        return buildAnnotatorLinkJson(annotatorAccountId, resume);
+    }
+
     private static String accountTopicsPath(Long accountId) {
         return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.TOPICS_SEGMENT;
     }
 
     private static String annotatorLinkPath(Long accountId, long topicId) {
         return accountTopicsPath(accountId) + "/" + topicId + ApiPathConstants.ANNOTATOR_LINK_SEGMENT;
+    }
+
+    private static String annotatorLinkResumePath(Long accountId, long topicId) {
+        return annotatorLinkPath(accountId, topicId) + ApiPathConstants.ANNOTATOR_LINK_RESUME_SEGMENT;
     }
 
     private static String accountProfilesPath(Long accountId) {

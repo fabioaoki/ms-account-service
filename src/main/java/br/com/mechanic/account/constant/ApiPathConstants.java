@@ -26,6 +26,11 @@ public final class ApiPathConstants {
     public static final String ANNOTATOR_LINK_SEGMENT = "/annotator-link";
 
     /**
+     * Atualização do resumo do vínculo (PUT com {@code annotator_account_id} + {@code resume}).
+     */
+    public static final String ANNOTATOR_LINK_RESUME_SEGMENT = "/resume";
+
+    /**
      * Ex.: {@code /api/v1/accounts/1/topics/42} (PUT parcial por tópico).
      */
     public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN =
@@ -42,6 +47,12 @@ public final class ApiPathConstants {
      */
     public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_ANT_PATTERN =
             ACCOUNTS_BASE_PATH + "/*/topics/*/annotator-link";
+
+    /**
+     * Ex.: {@code /api/v1/accounts/11/topics/99/annotator-link/resume}.
+     */
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_RESUME_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topics/*/annotator-link/resume";
 
     public static final String ACCOUNT_DEACTIVATE_SEGMENT = "/deactivate";
 

@@ -6,6 +6,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
+
 @Component
 public class TopicAnnotatorLinkRepositoryJpa implements TopicAnnotatorLinkRepositoryImpl {
 
@@ -32,5 +34,10 @@ public class TopicAnnotatorLinkRepositoryJpa implements TopicAnnotatorLinkReposi
     @Override
     public boolean existsByTopicIdAndAnnotatorAccountId(Long topicId, Long annotatorAccountId) {
         return repository.existsByTopic_IdAndAnnotatorAccount_Id(topicId, annotatorAccountId);
+    }
+
+    @Override
+    public Optional<TopicAnnotatorLink> findByTopicIdAndAnnotatorAccountId(Long topicId, Long annotatorAccountId) {
+        return repository.findByTopic_IdAndAnnotatorAccount_Id(topicId, annotatorAccountId);
     }
 }

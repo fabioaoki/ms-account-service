@@ -55,4 +55,12 @@ public final class AnnotatorLinkMapper {
                 .createdAt(createdAt)
                 .build();
     }
+
+    /**
+     * Atualiza apenas o campo de resumo no vínculo persistido (o adaptador de repositório define
+     * {@code last_updated_at} no save).
+     */
+    public static void applyResumeToLink(TopicAnnotatorLink link, String normalizedResume) {
+        link.setResume(normalizedResume);
+    }
 }

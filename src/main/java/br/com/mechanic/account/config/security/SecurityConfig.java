@@ -33,6 +33,11 @@ public class SecurityConfig {
                                 ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_ANT_PATTERN
                         )
                         .permitAll()
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_RESUME_ANT_PATTERN
+                        )
+                        .permitAll()
                         .requestMatchers(HttpMethod.PUT, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN)
                         .permitAll()
                         .requestMatchers(HttpMethod.PATCH, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_CLOSE_ANT_PATTERN)
