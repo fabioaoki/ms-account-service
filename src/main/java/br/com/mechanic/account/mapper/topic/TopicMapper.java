@@ -2,13 +2,17 @@ package br.com.mechanic.account.mapper.topic;
 
 import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.topic.Topic;
+import br.com.mechanic.account.entity.topic.TopicAnnotatorLink;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
+import br.com.mechanic.account.service.response.TopicAnnotatorLinkSummaryResponse;
 import br.com.mechanic.account.service.response.TopicResponse;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TopicMapper {
@@ -50,7 +54,11 @@ public final class TopicMapper {
                 .build();
     }
 
-    public static TopicResponse toResponse(Topic topic) {
+    public static TopicResponse toResponse(Topic topic, List<TopicAnnotatorLink> topicAnnotatorLinks) {
+        List<TopicAnnotatorLinkSummaryResponse> annotatorItems = topicAnnotatorLinks.stream()
+                .sorted(Comparator.comparing(TopicAnnotatorLink::getCreatedAt))
+                .map(TopicMapper::toAnnotatorLinkSummary)
+                .toList();
         return new TopicResponse(
                 topic.getId(),
                 topic.getAccount().getId(),
@@ -61,7 +69,18 @@ public final class TopicMapper {
                 topic.getLastUpdatedAt(),
                 topic.getEndDate(),
                 topic.getStatus(),
-                topic.getProfileType()
+                topic.getProfileType(),
+                annotatorItems
+        );
+    }
+
+    private static TopicAnnotatorLinkSummaryResponse toAnnotatorLinkSummary(TopicAnnotatorLink link) {
+        Account annotator = link.getAnnotatorAccount();
+        return new TopicAnnotatorLinkSummaryResponse(
+                annotator.getId(),
+                annotator.getName(),
+                link.getResume(),
+                annotator.getStatus()
         );
     }
 }

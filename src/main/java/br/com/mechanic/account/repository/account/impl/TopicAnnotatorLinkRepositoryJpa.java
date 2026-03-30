@@ -1,5 +1,6 @@
 package br.com.mechanic.account.repository.account.impl;
 
+import br.com.mechanic.account.constant.TopicPaginationConstants;
 import br.com.mechanic.account.entity.topic.TopicAnnotatorLink;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.repository.account.jpa.TopicAnnotatorLinkRepository;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Sort;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,6 +45,19 @@ public class TopicAnnotatorLinkRepositoryJpa implements TopicAnnotatorLinkReposi
     @Override
     public Optional<TopicAnnotatorLink> findByTopicIdAndAnnotatorAccountId(Long topicId, Long annotatorAccountId) {
         return repository.findByTopic_IdAndAnnotatorAccount_Id(topicId, annotatorAccountId);
+    }
+
+    @Override
+    public List<TopicAnnotatorLink> findAllByTopicIdWithAnnotatorAccountOrderByCreatedAtAsc(Long topicId) {
+        return repository.findAllByTopic_Id(topicId, Sort.by(Sort.Direction.ASC, TopicPaginationConstants.SORT_PROPERTY_CREATED_AT));
+    }
+
+    @Override
+    public List<TopicAnnotatorLink> findAllByTopicIdInWithAnnotatorAccountOrdered(Collection<Long> topicIds) {
+        if (topicIds == null || topicIds.isEmpty()) {
+            return List.of();
+        }
+        return repository.findAllWithAnnotatorAccountByTopicIdIn(topicIds);
     }
 
     @Override

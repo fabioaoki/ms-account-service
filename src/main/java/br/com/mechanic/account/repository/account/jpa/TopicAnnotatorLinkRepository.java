@@ -5,11 +5,25 @@ import br.com.mechanic.account.enuns.TopicStatusEnum;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface TopicAnnotatorLinkRepository extends JpaRepository<TopicAnnotatorLink, Long> {
+
+    @EntityGraph(attributePaths = "annotatorAccount")
+    List<TopicAnnotatorLink> findAllByTopic_Id(Long topicId, Sort sort);
+
+    @Query("""
+            select l from TopicAnnotatorLink l
+            join fetch l.annotatorAccount
+            where l.topic.id in :topicIds
+            order by l.topic.id asc, l.createdAt asc
+            """)
+    List<TopicAnnotatorLink> findAllWithAnnotatorAccountByTopicIdIn(@Param("topicIds") Collection<Long> topicIds);
 
     boolean existsByTopic_IdAndAnnotatorAccount_Id(Long topicId, Long annotatorAccountId);
 

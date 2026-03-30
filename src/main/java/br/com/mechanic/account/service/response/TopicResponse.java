@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record TopicResponse(
@@ -24,6 +25,8 @@ public record TopicResponse(
         LocalDateTime endDate,
         TopicStatusEnum status,
         @JsonProperty(TopicCreateRequestJsonConstants.PROFILE_TYPE)
-        AccountProfileTypeEnum profileType
+        AccountProfileTypeEnum profileType,
+        @JsonProperty(TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS)
+        List<TopicAnnotatorLinkSummaryResponse> topicAnnotatorLinks
 ) {
 }

@@ -23,4 +23,10 @@ public final class TopicCreateRequestJsonConstants {
 
     /** Nome formatado do criador do tópico ({@code account.name}), presente em {@link br.com.mechanic.account.service.response.TopicResponse}. */
     public static final String ACCOUNT_NAME = "account_name";
+
+    /**
+     * Itens {@link br.com.mechanic.account.service.response.TopicAnnotatorLinkSummaryResponse} vindos de {@code topic_annotator_link}
+     * no {@link br.com.mechanic.account.service.response.TopicResponse}.
+     */
+    public static final String TOPIC_ANNOTATOR_LINKS = "topic_annotator_links";
 }

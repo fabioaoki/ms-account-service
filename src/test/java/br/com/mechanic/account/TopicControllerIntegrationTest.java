@@ -1,6 +1,7 @@
 package br.com.mechanic.account;
 
 import br.com.mechanic.account.constant.AccountUpdateValidationConstants;
+import br.com.mechanic.account.constant.AnnotatorLinkJsonConstants;
 import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.constant.TopicCreateRequestJsonConstants;
 import br.com.mechanic.account.constant.TopicListQueryConstants;
@@ -10,6 +11,7 @@ import br.com.mechanic.account.constant.TopicValidationConstants;
 import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.topic.Topic;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
+import br.com.mechanic.account.enuns.AccountStatusEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.repository.account.jpa.AccountRepositoryJpa;
 import br.com.mechanic.account.repository.account.jpa.TopicHistoryRepository;
@@ -37,6 +39,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -135,6 +138,8 @@ class TopicControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()))
                 .andExpect(jsonPath("$.end_date").value(FIXED_NOW_END_DATE_VALID_PLUS_ONE_DAY))
                 .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.SPEAKER.name()))
+                .andExpect(jsonPath("$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS).isArray())
+                .andExpect(jsonPath("$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + ".length()").value(0))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -799,6 +804,11 @@ class TopicControllerIntegrationTest {
         mockMvc.perform(get(accountTopicsPath(accountId)).param("page", "0").param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0]." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS).isArray())
+                .andExpect(
+                        jsonPath("$.content[0]." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + ".length()")
+                                .value(0)
+                )
                 .andExpect(jsonPath("$.totalElements").value(3))
                 .andExpect(jsonPath("$.totalPages").value(2))
                 .andExpect(jsonPath("$.size").value(2))
@@ -863,7 +873,64 @@ class TopicControllerIntegrationTest {
                 .andExpect(jsonPath("$.accountId").value(accountId))
                 .andExpect(jsonPath("$." + TopicCreateRequestJsonConstants.ACCOUNT_NAME).value("Nome Sobrenome"))
                 .andExpect(jsonPath("$.title").value("Topico api"))
-                .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()));
+                .andExpect(jsonPath("$.status").value(TopicStatusEnum.OPEN.name()))
+                .andExpect(jsonPath("$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS).isArray())
+                .andExpect(jsonPath("$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + ".length()").value(0));
+    }
+
+    @Test
+    @DisplayName("GET .../topics/{topicId} inclui topic_annotator_links com id, nome, resume e status da conta anotadora")
+    void getTopicByIdIncludesAnnotatorLinksFromTopicAnnotatorLinkTable() throws Exception {
+        String emailOwner = "topic-ant-own-" + UUID.randomUUID() + "@email.com";
+        Long ownerId = createAccountAndGetId(emailOwner, "Dono", "Speaker", LocalDate.now().minusYears(28));
+        linkProfileForTopicCreation(ownerId, AccountProfileTypeEnum.SPEAKER);
+
+        String emailAnnotator = "topic-ant-" + UUID.randomUUID() + "@email.com";
+        Long annotatorId = createAccountAndGetId(emailAnnotator, "Ana", "Notator", LocalDate.now().minusYears(30));
+
+        long topicId = createSpeakerTopicViaApi(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get(accountTopicItemPath(ownerId, topicId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + ".length()").value(1))
+                .andExpect(jsonPath(
+                        "$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + "[0]."
+                                + AnnotatorLinkJsonConstants.ANNOTATOR_ACCOUNT_ID
+                ).value(annotatorId.intValue()))
+                .andExpect(jsonPath(
+                        "$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + "[0]."
+                                + AnnotatorLinkJsonConstants.ANNOTATOR_FULL_NAME
+                ).value("Ana Notator"))
+                .andExpect(jsonPath(
+                        "$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + "[0]."
+                                + AnnotatorLinkJsonConstants.RESUME
+                ).value(nullValue()))
+                .andExpect(jsonPath(
+                        "$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + "[0]."
+                                + AnnotatorLinkJsonConstants.ANNOTATOR_ACCOUNT_STATUS
+                ).value(AccountStatusEnum.ACTIVE.name()));
+
+        String resumeText = "Resumo no GET do topico.";
+        mockMvc.perform(
+                        put(annotatorLinkResumePath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkResumeJson(annotatorId, resumeText))
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(accountTopicItemPath(ownerId, topicId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$." + TopicCreateRequestJsonConstants.TOPIC_ANNOTATOR_LINKS + "[0]."
+                                + AnnotatorLinkJsonConstants.RESUME
+                ).value(resumeText));
     }
 
     @Test
@@ -1283,6 +1350,36 @@ class TopicControllerIntegrationTest {
 
     private static String accountTopicClosePath(Long accountId, long topicId) {
         return accountTopicItemPath(accountId, topicId) + ApiPathConstants.TOPIC_CLOSE_SEGMENT;
+    }
+
+    private static String annotatorLinkPath(Long topicOwnerAccountId, long topicId) {
+        return accountTopicItemPath(topicOwnerAccountId, topicId) + ApiPathConstants.ANNOTATOR_LINK_SEGMENT;
+    }
+
+    private static String annotatorLinkResumePath(Long topicOwnerAccountId, long topicId) {
+        return annotatorLinkPath(topicOwnerAccountId, topicId) + ApiPathConstants.ANNOTATOR_LINK_RESUME_SEGMENT;
+    }
+
+    private static String buildAnnotatorLinkJsonAnnotatorOnly(Long annotatorAccountId) {
+        return """
+                {"%s": %d}
+                """
+                .formatted(AnnotatorLinkJsonConstants.ANNOTATOR_ACCOUNT_ID, annotatorAccountId);
+    }
+
+    private static String buildAnnotatorLinkResumeJson(Long annotatorAccountId, String resume) {
+        return """
+                {
+                  "%s": %d,
+                  "%s": "%s"
+                }
+                """
+                .formatted(
+                        AnnotatorLinkJsonConstants.ANNOTATOR_ACCOUNT_ID,
+                        annotatorAccountId,
+                        AnnotatorLinkJsonConstants.RESUME,
+                        resume.replace("\\", "\\\\").replace("\"", "\\\"")
+                );
     }
 
     private long persistSpeakerTopicWithStatus(Long accountId, TopicStatusEnum status) {

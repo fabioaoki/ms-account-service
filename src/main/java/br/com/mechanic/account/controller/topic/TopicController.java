@@ -81,12 +81,7 @@ public class TopicController {
         return ResponseEntity.ok(body);
     }
 
-    @PatchMapping(
-            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
-                    + ApiPathConstants.TOPICS_SEGMENT
-                    + ApiPathConstants.TOPIC_ID_PATH_VARIABLE
-                    + ApiPathConstants.TOPIC_CLOSE_SEGMENT
-    )
+    @PatchMapping(ApiPathConstants.ACCOUNT_ID_TOPICS_TOPIC_ID_CLOSE_RELATIVE_PATH)
     public ResponseEntity<TopicResponse> closeTopic(
             @PathVariable Long accountId,
             @PathVariable Long topicId

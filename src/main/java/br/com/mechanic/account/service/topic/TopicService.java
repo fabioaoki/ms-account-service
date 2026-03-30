@@ -8,6 +8,7 @@ import br.com.mechanic.account.constant.EntityConstants;
 import br.com.mechanic.account.constant.TopicValidationConstants;
 import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.entity.topic.Topic;
+import br.com.mechanic.account.entity.topic.TopicAnnotatorLink;
 import br.com.mechanic.account.entity.topic.TopicHistory;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.AccountStatusEnum;
@@ -16,6 +17,7 @@ import br.com.mechanic.account.exception.AccountException;
 import br.com.mechanic.account.mapper.topic.TopicMapper;
 import br.com.mechanic.account.repository.account.impl.AccountProfileRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.AccountRepositoryImpl;
+import br.com.mechanic.account.repository.account.impl.TopicAnnotatorLinkRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicHistoryRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
 import br.com.mechanic.account.service.request.TopicCreateRequest;
@@ -34,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Topic endpoints: account must exist and be {@link AccountStatusEnum#ACTIVE}. Creation: missing
@@ -49,6 +53,7 @@ public class TopicService implements TopicServiceBO {
     private final AccountProfileRepositoryImpl accountProfileRepository;
     private final TopicRepositoryImpl topicRepository;
     private final TopicHistoryRepositoryImpl topicHistoryRepository;
+    private final TopicAnnotatorLinkRepositoryImpl topicAnnotatorLinkRepository;
     private final Clock clock;
 
     @Override
@@ -80,7 +85,7 @@ public class TopicService implements TopicServiceBO {
             saveTopicStatusHistory(saved, saved.getStatus());
         }
         log.info(TopicServiceLogConstants.CREATE_TOPIC_FLOW_COMPLETED, accountId, saved.getId());
-        return TopicMapper.toResponse(saved);
+        return toTopicResponseWithAnnotatorLinks(saved);
     }
 
     @Override
@@ -124,7 +129,7 @@ public class TopicService implements TopicServiceBO {
 
         Topic saved = topicRepository.save(topic);
         log.info(TopicServiceLogConstants.UPDATE_TOPIC_FLOW_COMPLETED, accountId, saved.getId());
-        return TopicMapper.toResponse(saved);
+        return toTopicResponseWithAnnotatorLinks(saved);
     }
 
     @Override
@@ -135,7 +140,7 @@ public class TopicService implements TopicServiceBO {
         Topic topic = topicRepository.findByIdAndAccountId(topicId, accountId)
                 .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
         log.info(TopicServiceLogConstants.GET_TOPIC_BY_ID_FLOW_COMPLETED, accountId, topicId);
-        return TopicMapper.toResponse(topic);
+        return toTopicResponseWithAnnotatorLinks(topic);
     }
 
     @Override
@@ -182,7 +187,7 @@ public class TopicService implements TopicServiceBO {
         Topic saved = topicRepository.save(topic);
         saveTopicStatusHistory(saved, TopicStatusEnum.CLOSED);
         log.info(TopicServiceLogConstants.CLOSE_TOPIC_FLOW_COMPLETED, accountId, saved.getId());
-        return TopicMapper.toResponse(saved);
+        return toTopicResponseWithAnnotatorLinks(saved);
     }
 
     private void saveTopicStatusHistory(Topic topic, TopicStatusEnum status) {
@@ -196,8 +201,13 @@ public class TopicService implements TopicServiceBO {
     }
 
     private TopicPageResponse mapToTopicPageResponseAndLog(Long accountId, Page<Topic> pageResult) {
-        List<TopicResponse> content = pageResult.stream()
-                .map(TopicMapper::toResponse)
+        List<Topic> topics = pageResult.getContent();
+        List<Long> topicIds = topics.stream().map(Topic::getId).toList();
+        List<TopicAnnotatorLink> allAnnotatorLinks =
+                topicAnnotatorLinkRepository.findAllByTopicIdInWithAnnotatorAccountOrdered(topicIds);
+        Map<Long, List<TopicAnnotatorLink>> linksByTopicId = groupAnnotatorLinksByTopicId(allAnnotatorLinks);
+        List<TopicResponse> content = topics.stream()
+                .map(t -> TopicMapper.toResponse(t, linksByTopicId.getOrDefault(t.getId(), List.of())))
                 .toList();
         TopicPageResponse response = new TopicPageResponse(
                 content,
@@ -214,6 +224,16 @@ public class TopicService implements TopicServiceBO {
                 pageResult.getTotalElements()
         );
         return response;
+    }
+
+    private TopicResponse toTopicResponseWithAnnotatorLinks(Topic topic) {
+        List<TopicAnnotatorLink> links =
+                topicAnnotatorLinkRepository.findAllByTopicIdWithAnnotatorAccountOrderByCreatedAtAsc(topic.getId());
+        return TopicMapper.toResponse(topic, links);
+    }
+
+    private static Map<Long, List<TopicAnnotatorLink>> groupAnnotatorLinksByTopicId(List<TopicAnnotatorLink> links) {
+        return links.stream().collect(Collectors.groupingBy(l -> l.getTopic().getId()));
     }
 
     private static Pageable buildTopicListPageable(int pageNumber, int pageSize) {

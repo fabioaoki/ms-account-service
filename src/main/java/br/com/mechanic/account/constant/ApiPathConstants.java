@@ -21,6 +21,12 @@ public final class ApiPathConstants {
     public static final String TOPIC_CLOSE_SEGMENT = "/close";
 
     /**
+     * Relativo ao prefixo {@link #ACCOUNTS_BASE_PATH} em controllers: {@code /{accountId}/topics/{topicId}/close}.
+     */
+    public static final String ACCOUNT_ID_TOPICS_TOPIC_ID_CLOSE_RELATIVE_PATH =
+            ACCOUNT_ID_PATH_VARIABLE + TOPICS_SEGMENT + TOPIC_ID_PATH_VARIABLE + TOPIC_CLOSE_SEGMENT;
+
+    /**
      * Vínculo tópico–anotador (POST cria link + primeira linha de histórico).
      */
     public static final String ANNOTATOR_LINK_SEGMENT = "/annotator-link";

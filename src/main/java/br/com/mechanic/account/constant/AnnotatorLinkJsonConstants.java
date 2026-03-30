@@ -14,6 +14,12 @@ public final class AnnotatorLinkJsonConstants {
 
     public static final String ANNOTATOR_ACCOUNT_ID = "annotator_account_id";
 
+    /** Nome formatado da conta anotadora ({@code Account#getName()}) em resumos embutidos no tópico. */
+    public static final String ANNOTATOR_FULL_NAME = "annotator_full_name";
+
+    /** Status da conta anotadora ({@link br.com.mechanic.account.enuns.AccountStatusEnum}) no tópico. */
+    public static final String ANNOTATOR_ACCOUNT_STATUS = "annotator_account_status";
+
     public static final String RESUME = "resume";
 
     public static final String CREATED_AT = "created_at";
