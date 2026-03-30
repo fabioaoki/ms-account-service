@@ -188,6 +188,7 @@ public class TopicService implements TopicServiceBO {
     private void saveTopicStatusHistory(Topic topic, TopicStatusEnum status) {
         topicHistoryRepository.save(
                 TopicHistory.builder()
+                        .account(topic.getAccount())
                         .topic(topic)
                         .status(status)
                         .build()

@@ -3,7 +3,7 @@
     "name": "ms-account-service",
     "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.14.0"
+    "version": "1.15.0"
   },
   "item": [
     {
@@ -387,7 +387,7 @@
     },
     {
       "name": "TopicController",
-      "description": "Conta ACTIVE obrigatoria para todos os endpoints de topicos. Listagem: GET .../topics com query opcionais page, size, status (TopicStatusEnum), profile_type (perfil de criacao, snake_case). Use status sozinho, profile_type sozinho ou ambos (AND). Sem status nem profile_type: lista completa da conta.",
+      "description": "Conta ACTIVE obrigatoria em GET/POST/PUT/PATCH de topicos.\n\nListagem GET .../topics: page, size; filtros opcionais status e profile_type (snake_case), sozinhos ou em AND. Nao combine status com profile_type=ANNOTATOR (400).\n\nAuditoria topic_history (sem endpoint REST): ao criar topico com status persistido (ex. OPEN), grava-se OPEN; ao fechar (PATCH .../close), grava-se CLOSED com created_at. ANNOTATOR sem status nao gera linha na criacao.\n\nFechar: PATCH .../topics/{topicId}/close — apenas se status atual for OPEN.",
       "item": [
         {
           "name": "Listar topicos (GET /api/v1/accounts/{accountId}/topics)",
@@ -405,7 +405,7 @@
                 { "key": "profile_type", "value": "{{topicProfileType}}", "description": "Opcional (ex. SPEAKER). Adicione na URL; combine com status se quiser AND.", "disabled": true }
               ]
             },
-            "description": "TopicPageResponse paginado. Ative os query params status e/ou profile_type no Postman quando precisar filtrar (sozinhos ou juntos = AND). Sem esses params: todos os topicos da conta."
+            "description": "TopicPageResponse paginado. Ative status e/ou profile_type para filtrar (AND). Nao use status junto com profile_type=ANNOTATOR. Sem filtros: todos os topicos da conta."
           }
         },
         {
@@ -420,6 +420,49 @@
             },
             "description": "Somente se o topico pertencer ao accountId. Caso contrario 400 (mesma mensagem que topico inexistente)."
           }
+        },
+        {
+          "name": "Fechar topico OPEN → CLOSED (PATCH /api/v1/accounts/{accountId}/topics/{topicId}/close)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/close",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts", "{{accountId}}", "topics", "{{topicId}}", "close"]
+            },
+            "description": "Sem body. Requisitos: conta ACTIVE; topico da conta; status atual OPEN (CLOSED/CANCELED/REVIEWED ou sem status tipo ANNOTATOR → 400). Resposta 200 TopicResponse com status CLOSED e lastUpdatedAt. Persiste linha em topic_history (status CLOSED, created_at)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.environment.get('topicId')) {",
+                  "  pm.environment.set('topicId', 1);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Topico CLOSED', function () {",
+                  "  pm.expect(json.status).to.eql('CLOSED');",
+                  "  pm.expect(json.lastUpdatedAt).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Criar topico — perfil complementar (ex. SPEAKER)",
@@ -448,7 +491,7 @@
               "mode": "raw",
               "raw": "{\n  \"title\": \"{{topicTema}}\",\n  \"context\": \"{{topicContexto}}\",\n  \"profile_type\": \"{{profileTypeLink}}\",\n  \"end_date\": \"{{topicEndDate}}\"\n}"
             },
-            "description": "POST: title, context (opcional), profile_type, end_date. Conta ACTIVE; perfil vinculado; end_date na janela. Resposta 201 espelha title/context (TopicResponse)."
+            "description": "POST: title, context (opcional), profile_type, end_date. Conta ACTIVE; perfil vinculado; end_date na janela. Resposta 201 (TopicResponse). Side-effect: topic_history grava uma linha com status OPEN quando o topico nasce com status (nao-ANNOTATOR)."
           },
           "event": [
             {

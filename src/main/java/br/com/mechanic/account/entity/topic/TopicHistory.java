@@ -1,6 +1,7 @@
 package br.com.mechanic.account.entity.topic;
 
 import br.com.mechanic.account.constant.EntityConstants;
+import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,6 +35,14 @@ public class TopicHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = EntityConstants.COLUMN_ACCOUNT_ID,
+            nullable = false,
+            foreignKey = @ForeignKey(name = EntityConstants.TOPIC_HISTORY_ACCOUNT_FK_NAME)
+    )
+    private Account account;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(

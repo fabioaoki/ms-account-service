@@ -24,6 +24,7 @@ public final class EntityConstants {
     public static final String ACCOUNT_PROFILE_PROFILE_FK_NAME = "fk_account_profile_profile";
     public static final String TOPIC_ACCOUNT_FK_NAME = "fk_topic_account";
     public static final String TOPIC_HISTORY_TOPIC_FK_NAME = "fk_topic_history_topic";
+    public static final String TOPIC_HISTORY_ACCOUNT_FK_NAME = "fk_topic_history_account";
 
     public static final String COLUMN_EMAIL = "email";
     public static final String COLUMN_NAME = "name";

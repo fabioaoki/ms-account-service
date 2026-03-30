@@ -14,6 +14,7 @@ public interface TopicRepositoryJpa extends JpaRepository<Topic, Long>, JpaSpeci
 
     long countByAccount_Id(Long accountId);
 
+    @EntityGraph(attributePaths = "account")
     Optional<Topic> findByIdAndAccount_Id(Long topicId, Long accountId);
 
     @EntityGraph(attributePaths = "account")
