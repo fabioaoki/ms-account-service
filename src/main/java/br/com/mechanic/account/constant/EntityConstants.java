@@ -13,6 +13,8 @@ public final class EntityConstants {
     public static final String ACCOUNT_STATUS_HISTORY_TABLE_NAME = "account_status_history";
     public static final String TOPIC_TABLE_NAME = "topic";
     public static final String TOPIC_HISTORY_TABLE_NAME = "topic_history";
+    public static final String TOPIC_ANNOTATOR_LINK_TABLE_NAME = "topic_annotator_link";
+    public static final String TOPIC_ANNOTATOR_LINK_HISTORY_TABLE_NAME = "topic_annotator_link_history";
 
     public static final String ACCOUNT_EMAIL_UK = "uk_account_email";
     public static final String PROFILE_TYPE_UK = "uk_profile_type";
@@ -25,6 +27,13 @@ public final class EntityConstants {
     public static final String TOPIC_ACCOUNT_FK_NAME = "fk_topic_account";
     public static final String TOPIC_HISTORY_TOPIC_FK_NAME = "fk_topic_history_topic";
     public static final String TOPIC_HISTORY_ACCOUNT_FK_NAME = "fk_topic_history_account";
+    public static final String TOPIC_ANNOTATOR_LINK_TOPIC_FK_NAME = "fk_tal_topic";
+    public static final String TOPIC_ANNOTATOR_LINK_OWNER_FK_NAME = "fk_tal_owner";
+    public static final String TOPIC_ANNOTATOR_LINK_ANNOTATOR_FK_NAME = "fk_tal_annotator";
+    public static final String TOPIC_ANNOTATOR_LINK_HISTORY_LINK_FK_NAME = "fk_talh_link";
+    public static final String TOPIC_ANNOTATOR_LINK_HISTORY_ANNOTATOR_FK_NAME = "fk_talh_annotator";
+
+    public static final String TOPIC_ANNOTATOR_LINK_TOPIC_ANNOTATOR_UK_NAME = "uk_tal_topic_annotator";
 
     public static final String COLUMN_EMAIL = "email";
     public static final String COLUMN_NAME = "name";
@@ -46,6 +55,10 @@ public final class EntityConstants {
     public static final String COLUMN_TOPIC_STATUS = "status";
     public static final String COLUMN_TOPIC_END_DATE = "end_date";
     public static final String COLUMN_TOPIC_ID = "topic_id";
+    public static final String COLUMN_TOPIC_OWNER_ACCOUNT_ID = "topic_owner_account_id";
+    public static final String COLUMN_ANNOTATOR_ACCOUNT_ID = "annotator_account_id";
+    public static final String COLUMN_TOPIC_ANNOTATOR_LINK_RESUME = "resume";
+    public static final String COLUMN_ANNOTATOR_LINK_ID = "link_id";
 
     public static final int EMAIL_COLUMN_LENGTH = 254;
     public static final int NAME_COLUMN_LENGTH = 120;

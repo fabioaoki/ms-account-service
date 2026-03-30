@@ -21,6 +21,11 @@ public final class ApiPathConstants {
     public static final String TOPIC_CLOSE_SEGMENT = "/close";
 
     /**
+     * Vínculo tópico–anotador (POST cria link + primeira linha de histórico).
+     */
+    public static final String ANNOTATOR_LINK_SEGMENT = "/annotator-link";
+
+    /**
      * Ex.: {@code /api/v1/accounts/1/topics/42} (PUT parcial por tópico).
      */
     public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN =
@@ -31,6 +36,12 @@ public final class ApiPathConstants {
      */
     public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_CLOSE_ANT_PATTERN =
             ACCOUNTS_BASE_PATH + "/*/topics/*/close";
+
+    /**
+     * Ex.: {@code /api/v1/accounts/11/topics/99/annotator-link}.
+     */
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topics/*/annotator-link";
 
     public static final String ACCOUNT_DEACTIVATE_SEGMENT = "/deactivate";
 

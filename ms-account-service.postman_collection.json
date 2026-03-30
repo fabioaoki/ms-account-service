@@ -1,9 +1,9 @@
 {
   "info": {
     "name": "ms-account-service",
-    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), TopicController (topicos).",
+    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (vinculo topico-anotador), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.15.0"
+    "version": "1.17.0"
   },
   "item": [
     {
@@ -378,6 +378,144 @@
                 "exec": [
                   "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
                   "pm.test('Sem corpo', function () { pm.expect(pm.response.text()).to.eql(''); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "AnnotatorController",
+      "description": "br.com.mechanic.account.controller.annotator.AnnotatorController — POST vincula um anotador a um topico da conta (accountId no path = dono do topico). Topicos com status (ex. SPEAKER): so com status OPEN — CLOSED/CANCELED/REVIEWED retorna 400. Topico profile ANNOTATOR (sem status de workflow): pode vincular. Varios anotadores diferentes por topico; par (topico, anotador) unico. Conta ACTIVE; anotador com perfil ANNOTATOR. resume opcional.",
+      "item": [
+        {
+          "name": "Vincular anotador ao topico (POST .../topics/{topicId}/annotator-link)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/annotator-link",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}",
+                "annotator-link"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"annotator_account_id\": {{annotatorAccountId}}\n}"
+            },
+            "description": "Corpo minimo: annotator_account_id (snake_case). Opcional: \"resume\" (texto grande); se omitido, gravado null ate fluxo futuro.\n\nRegras resumidas: topico deve pertencer a accountId; dono e anotador ACTIVE; anotador com perfil ANNOTATOR; se profile_type do topico nao for ANNOTATOR, annotator_account_id deve ser diferente do dono; par (topicId, annotator) unico.\n\nResposta 201: id, topic_id, topic_owner_account_id, annotator_account_id, resume (se houver), created_at, last_updated_at (null no create)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.environment.get('topicId')) {",
+                  "  pm.environment.set('topicId', 1);",
+                  "}",
+                  "if (!pm.collectionVariables.get('annotatorAccountId')) {",
+                  "  pm.collectionVariables.set('annotatorAccountId', '2');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Corpo do link', function () {",
+                  "  pm.expect(json.id).to.be.a('number');",
+                  "  pm.expect(json.topic_id).to.eql(Number(pm.environment.get('topicId')));",
+                  "  pm.expect(json.topic_owner_account_id).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.annotator_account_id).to.eql(Number(pm.collectionVariables.get('annotatorAccountId')));",
+                  "  pm.expect(json.created_at).to.be.a('string');",
+                  "});",
+                  "pm.environment.set('topicAnnotatorLinkId', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vincular anotador (com resume opcional)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/annotator-link",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}",
+                "annotator-link"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"annotator_account_id\": {{annotatorAccountId}},\n  \"resume\": \"{{annotatorLinkResume}}\"\n}"
+            },
+            "description": "Mesmo endpoint com campo resume preenchido (opcional). Ajuste annotatorAccountId para um anotador ainda nao vinculado a este topicId, ou use outro topicId."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('annotatorLinkResume')) {",
+                  "  pm.collectionVariables.set('annotatorLinkResume', 'Resumo opcional via Postman.');",
+                  "}",
+                  "if (!pm.environment.get('accountId')) {",
+                  "  pm.environment.set('accountId', 1);",
+                  "}",
+                  "if (!pm.environment.get('topicId')) {",
+                  "  pm.environment.set('topicId', 1);",
+                  "}",
+                  "if (!pm.collectionVariables.get('annotatorAccountId')) {",
+                  "  pm.collectionVariables.set('annotatorAccountId', '2');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('resume retornado', function () {",
+                  "  pm.expect(json.resume).to.eql(pm.collectionVariables.get('annotatorLinkResume'));",
+                  "});"
                 ]
               }
             }
@@ -875,6 +1013,14 @@
     {
       "key": "topicProfileType",
       "value": "SPEAKER"
+    },
+    {
+      "key": "annotatorAccountId",
+      "value": "2"
+    },
+    {
+      "key": "annotatorLinkResume",
+      "value": "Resumo opcional via Postman."
     }
   ]
 }
