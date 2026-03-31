@@ -4,7 +4,9 @@ import br.com.mechanic.account.constant.AccountUpdateValidationConstants;
 import br.com.mechanic.account.constant.AnnotatorLinkServiceLogConstants;
 import br.com.mechanic.account.constant.TopicAnnotatorLinkValidationConstants;
 import br.com.mechanic.account.constant.TopicPaginationConstants;
+import br.com.mechanic.account.constant.TopicValidationConstants;
 import br.com.mechanic.account.entity.account.Account;
+import br.com.mechanic.account.entity.account.AccountAnnotatorBlock;
 import br.com.mechanic.account.entity.topic.Topic;
 import br.com.mechanic.account.entity.topic.TopicAnnotatorLink;
 import br.com.mechanic.account.entity.topic.TopicAnnotatorLinkHistory;
@@ -15,15 +17,23 @@ import br.com.mechanic.account.exception.AccountException;
 import br.com.mechanic.account.mapper.topic.AnnotatorLinkMapper;
 import br.com.mechanic.account.repository.account.impl.AccountProfileRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.AccountRepositoryImpl;
+import br.com.mechanic.account.repository.account.impl.AccountAnnotatorBlockRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicAnnotatorLinkHistoryRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicAnnotatorLinkRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
+import br.com.mechanic.account.service.request.AnnotatorBlockCreateRequest;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkCreateRequest;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkResumeUpdateRequest;
+import br.com.mechanic.account.service.response.AnnotatorBlockedAccountListItemResponse;
+import br.com.mechanic.account.service.response.AnnotatorBlockedAccountPageResponse;
+import br.com.mechanic.account.service.response.AnnotatorBlockResponse;
 import br.com.mechanic.account.service.response.TopicAnnotatorLinkAnnotatorListItemResponse;
 import br.com.mechanic.account.service.response.TopicAnnotatorLinkResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +49,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
 
     private final AccountRepositoryImpl accountRepository;
     private final AccountProfileRepositoryImpl accountProfileRepository;
+    private final AccountAnnotatorBlockRepositoryImpl accountAnnotatorBlockRepository;
     private final TopicRepositoryImpl topicRepository;
     private final TopicAnnotatorLinkRepositoryImpl topicAnnotatorLinkRepository;
     private final TopicAnnotatorLinkHistoryRepositoryImpl topicAnnotatorLinkHistoryRepository;
@@ -85,6 +96,12 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
         if (topicAnnotatorLinkRepository.existsByTopicIdAndAnnotatorAccountId(topic.getId(), annotatorAccount.getId())) {
             throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_ANNOTATOR_LINK_PAIR_ALREADY_EXISTS);
         }
+        if (accountAnnotatorBlockRepository.existsByBlockerAccountIdAndBlockedAccountId(
+                topicOwnerAccount.getId(),
+                annotatorAccount.getId()
+        )) {
+            throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_ANNOTATOR_BLOCKED_BY_TOPIC_CREATOR);
+        }
 
         LocalDateTime creationTimestamp = LocalDateTime.now(clock);
 
@@ -109,6 +126,84 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
         log.info(AnnotatorLinkServiceLogConstants.CREATE_LINK_FLOW_COMPLETED, saved.getId(), topicId);
 
         return AnnotatorLinkMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public AnnotatorBlockResponse blockAnnotatorAccount(
+            Long topicOwnerAccountId,
+            Long topicId,
+            AnnotatorBlockCreateRequest request
+    ) {
+        Account blockerAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(topicOwnerAccountId);
+        topicRepository.findByIdAndAccountId(topicId, topicOwnerAccountId)
+                .orElseThrow(() -> new AccountException(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED_FOR_LINK
+                ));
+        Account blockedAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(request.blockedAccountId());
+        if (accountAnnotatorBlockRepository.existsByBlockerAccountIdAndBlockedAccountId(
+                blockerAccount.getId(),
+                blockedAccount.getId()
+        )) {
+            throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_BLOCKED_ACCOUNT_ALREADY_BLOCKED);
+        }
+        boolean hasPreviousParticipation = topicAnnotatorLinkRepository.existsByTopicOwnerAccountIdAndAnnotatorAccountId(
+                blockerAccount.getId(),
+                blockedAccount.getId()
+        );
+        if (!hasPreviousParticipation) {
+            throw new AccountException(TopicAnnotatorLinkValidationConstants.MESSAGE_BLOCKED_ACCOUNT_MUST_HAVE_PREVIOUS_PARTICIPATION);
+        }
+        AccountAnnotatorBlock savedBlock = accountAnnotatorBlockRepository.save(
+                AccountAnnotatorBlock.builder()
+                        .blockerAccount(blockerAccount)
+                        .blockedAccount(blockedAccount)
+                        .build()
+        );
+        return new AnnotatorBlockResponse(
+                savedBlock.getId(),
+                blockerAccount.getId(),
+                blockedAccount.getId(),
+                savedBlock.getCreatedAt()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AnnotatorBlockedAccountPageResponse listBlockedAnnotatorAccounts(
+            Long topicOwnerAccountId,
+            Integer page,
+            Integer size
+    ) {
+        Account blockerAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(topicOwnerAccountId);
+        int resolvedPage = page == null ? TopicPaginationConstants.DEFAULT_PAGE_NUMBER : page;
+        int resolvedSize = size == null ? TopicPaginationConstants.DEFAULT_PAGE_SIZE : size;
+        assertBlockedAccountsPagination(resolvedPage, resolvedSize);
+        Pageable pageable = PageRequest.of(
+                resolvedPage,
+                resolvedSize,
+                Sort.by(Sort.Direction.DESC, TopicPaginationConstants.SORT_PROPERTY_CREATED_AT)
+                        .and(Sort.by(Sort.Direction.DESC, TopicPaginationConstants.SORT_PROPERTY_ID))
+        );
+        Page<AccountAnnotatorBlock> pageResult =
+                accountAnnotatorBlockRepository.findAllByBlockerAccountId(blockerAccount.getId(), pageable);
+        List<AnnotatorBlockedAccountListItemResponse> content = pageResult.getContent()
+                .stream()
+                .map(block -> new AnnotatorBlockedAccountListItemResponse(
+                        block.getBlockedAccount().getId(),
+                        block.getBlockedAccount().getName()
+                ))
+                .toList();
+        return new AnnotatorBlockedAccountPageResponse(
+                blockerAccount.getId(),
+                content,
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages(),
+                pageResult.getSize(),
+                pageResult.getNumber(),
+                pageResult.isFirst(),
+                pageResult.isLast()
+        );
     }
 
     @Override
@@ -249,5 +344,19 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
             );
         }
         return trimmed;
+    }
+
+    private static void assertBlockedAccountsPagination(int pageNumber, int pageSize) {
+        if (pageNumber < TopicPaginationConstants.MIN_PAGE_NUMBER) {
+            throw new AccountException(TopicValidationConstants.MESSAGE_TOPIC_PAGE_NUMBER_NEGATIVE);
+        }
+        if (pageSize < TopicPaginationConstants.MIN_PAGE_SIZE || pageSize > TopicPaginationConstants.MAX_PAGE_SIZE) {
+            throw new AccountException(
+                    TopicValidationConstants.MESSAGE_TOPIC_PAGE_SIZE_INVALID.formatted(
+                            TopicPaginationConstants.MIN_PAGE_SIZE,
+                            TopicPaginationConstants.MAX_PAGE_SIZE
+                    )
+            );
+        }
     }
 }

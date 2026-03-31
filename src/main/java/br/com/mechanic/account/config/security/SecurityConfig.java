@@ -38,6 +38,11 @@ public class SecurityConfig {
                                 ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_RESUME_ANT_PATTERN
                         )
                         .permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_BLOCKS_ANT_PATTERN
+                        )
+                        .permitAll()
                         .requestMatchers(HttpMethod.PUT, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN)
                         .permitAll()
                         .requestMatchers(HttpMethod.PATCH, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_CLOSE_ANT_PATTERN)
@@ -69,6 +74,11 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPIC_ANNOTATOR_LINKS_ANT_PATTERN
+                        )
+                        .permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_ANNOTATOR_BLOCKS_ANT_PATTERN
                         )
                         .permitAll()
                         .requestMatchers(HttpMethod.DELETE, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_PROFILES_ANT_PATTERN)

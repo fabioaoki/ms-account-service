@@ -14,6 +14,8 @@ public interface TopicAnnotatorLinkRepositoryImpl {
 
     boolean existsByTopicIdAndAnnotatorAccountId(Long topicId, Long annotatorAccountId);
 
+    boolean existsByTopicOwnerAccountIdAndAnnotatorAccountId(Long topicOwnerAccountId, Long annotatorAccountId);
+
     Optional<TopicAnnotatorLink> findByTopicIdAndAnnotatorAccountId(Long topicId, Long annotatorAccountId);
 
     List<TopicAnnotatorLink> findAllByTopicIdWithAnnotatorAccountOrderByCreatedAtAsc(Long topicId);

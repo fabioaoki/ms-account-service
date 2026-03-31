@@ -43,6 +43,11 @@ public class TopicAnnotatorLinkRepositoryJpa implements TopicAnnotatorLinkReposi
     }
 
     @Override
+    public boolean existsByTopicOwnerAccountIdAndAnnotatorAccountId(Long topicOwnerAccountId, Long annotatorAccountId) {
+        return repository.existsByTopicOwnerAccount_IdAndAnnotatorAccount_Id(topicOwnerAccountId, annotatorAccountId);
+    }
+
+    @Override
     public Optional<TopicAnnotatorLink> findByTopicIdAndAnnotatorAccountId(Long topicId, Long annotatorAccountId) {
         return repository.findByTopic_IdAndAnnotatorAccount_Id(topicId, annotatorAccountId);
     }

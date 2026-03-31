@@ -17,6 +17,7 @@ public final class EntityConstants {
     public static final String TOPIC_ANNOTATOR_LINK_HISTORY_TABLE_NAME = "topic_annotator_link_history";
     public static final String TOPIC_AI_REPORT_TABLE_NAME = "topic_ai_report";
     public static final String TOPIC_AI_PROCESSING_ERROR_TABLE_NAME = "topic_ai_processing_error";
+    public static final String ACCOUNT_ANNOTATOR_BLOCK_TABLE_NAME = "account_annotator_block";
 
     public static final String ACCOUNT_EMAIL_UK = "uk_account_email";
     public static final String PROFILE_TYPE_UK = "uk_profile_type";
@@ -38,6 +39,9 @@ public final class EntityConstants {
     public static final String TOPIC_AI_REPORT_TOPIC_FK_NAME = "fk_topic_ai_report_topic";
     public static final String TOPIC_AI_REPORT_OWNER_FK_NAME = "fk_topic_ai_report_owner";
     public static final String TOPIC_AI_PROCESSING_ERROR_TOPIC_FK_NAME = "fk_topic_ai_processing_error_topic";
+    public static final String ACCOUNT_ANNOTATOR_BLOCK_BLOCKER_FK_NAME = "fk_account_annotator_block_blocker";
+    public static final String ACCOUNT_ANNOTATOR_BLOCK_BLOCKED_FK_NAME = "fk_account_annotator_block_blocked";
+    public static final String ACCOUNT_ANNOTATOR_BLOCK_BLOCKER_BLOCKED_UK_NAME = "uk_account_annotator_block_blocker_blocked";
 
     public static final String TOPIC_ANNOTATOR_LINK_TOPIC_ANNOTATOR_UK_NAME = "uk_tal_topic_annotator";
 
@@ -68,6 +72,8 @@ public final class EntityConstants {
     public static final String COLUMN_TOPIC_ID = "topic_id";
     public static final String COLUMN_TOPIC_OWNER_ACCOUNT_ID = "topic_owner_account_id";
     public static final String COLUMN_ANNOTATOR_ACCOUNT_ID = "annotator_account_id";
+    public static final String COLUMN_BLOCKER_ACCOUNT_ID = "blocker_account_id";
+    public static final String COLUMN_BLOCKED_ACCOUNT_ID = "blocked_account_id";
     public static final String COLUMN_TOPIC_ANNOTATOR_LINK_RESUME = "resume";
     public static final String COLUMN_ANNOTATOR_LINK_ID = "link_id";
 

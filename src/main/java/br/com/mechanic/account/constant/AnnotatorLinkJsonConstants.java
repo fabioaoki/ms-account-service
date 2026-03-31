@@ -14,6 +14,10 @@ public final class AnnotatorLinkJsonConstants {
 
     public static final String ANNOTATOR_ACCOUNT_ID = "annotator_account_id";
 
+    public static final String BLOCKED_ACCOUNT_ID = "blocked_account_id";
+    public static final String BLOCKED_ACCOUNT_IDS = "blocked_account_ids";
+    public static final String BLOCKED_ACCOUNT_NAME = "blocked_account_name";
+
     /** Nome formatado da conta anotadora ({@code Account#getName()}) em resumos embutidos no tópico. */
     public static final String ANNOTATOR_FULL_NAME = "annotator_full_name";
 

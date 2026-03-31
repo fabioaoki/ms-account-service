@@ -1,9 +1,9 @@
 {
   "info": {
     "name": "ms-account-service",
-    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos).",
+    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos + POST .../topics/{topicId}/annotator-blocks).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.24.0"
+    "version": "1.28.0"
   },
   "item": [
     {
@@ -387,7 +387,7 @@
     },
     {
       "name": "AnnotatorController",
-      "description": "br.com.mechanic.account.controller.annotator.AnnotatorController — POST cria vínculo; PUT .../annotator-link/resume atualiza o resumo; GET .../topic-annotator-links lista vínculos do anotador (conta no path ACTIVE). Query opcionais: topic_id, topic_owner_account_id, topic_status (enum TopicStatusEnum, ex. OPEN, CLOSED; AND com demais filtros). Resposta enriquecida: topic_status, topic_owner_name, resume, timestamps. Não valida dono do tópico ACTIVE nem status do tópico para autorizar a listagem.",
+      "description": "br.com.mechanic.account.controller.annotator.AnnotatorController — POST cria vínculo; PUT .../annotator-link/resume atualiza o resumo; GET .../topic-annotator-links lista vínculos do anotador (conta no path ACTIVE). Query opcionais: topic_id, topic_owner_account_id, topic_status (enum TopicStatusEnum, ex. OPEN, CLOSED; AND com demais filtros). Resposta enriquecida: topic_status, topic_owner_name, resume, timestamps.",
       "item": [
         {
           "name": "Listar vínculos do anotador (GET /api/v1/accounts/{annotatorAccountId}/topic-annotator-links)",
@@ -486,7 +486,7 @@
               "mode": "raw",
               "raw": "{\n  \"annotator_account_id\": {{annotatorAccountId}}\n}"
             },
-            "description": "Corpo: somente annotator_account_id (snake_case). Resumo: use PUT .../annotator-link/resume.\n\nRegras: topico da conta; dono e anotador ACTIVE; anotador perfil ANNOTATOR; se profile_type do topico nao for ANNOTATOR, annotator_account_id != dono; par (topicId, annotator) unico.\n\nResposta 201: resume omitido ate o PUT; created_at; last_updated_at null no create."
+            "description": "Corpo: somente annotator_account_id (snake_case). Resumo: use PUT .../annotator-link/resume.\n\nRegras: topico da conta; dono e anotador ACTIVE; anotador perfil ANNOTATOR; se profile_type do topico nao for ANNOTATOR, annotator_account_id != dono; par (topicId, annotator) unico; se o anotador estiver bloqueado pelo dono do tópico, retorna 400.\n\nResposta 201: resume omitido ate o PUT; created_at; last_updated_at null no create."
           },
           "event": [
             {
@@ -593,11 +593,12 @@
             }
           ]
         }
+
       ]
     },
     {
       "name": "TopicController",
-      "description": "Conta ACTIVE obrigatoria em GET/POST/PUT/PATCH de topicos.\n\nListagem GET .../topics: page, size; filtros opcionais status e profile_type (snake_case), sozinhos ou em AND. Nao combine status com profile_type=ANNOTATOR (400).\n\nAuditoria topic_history (sem endpoint REST): ao criar topico com status persistido (ex. OPEN), grava-se OPEN; ao fechar (PATCH .../close), grava-se CLOSED com created_at. ANNOTATOR sem status nao gera linha na criacao.\n\nFechar: PATCH .../topics/{topicId}/close — apenas se status atual for OPEN.\n\nOpenAI: POST .../topics/{topicId}/ai-consolidation e assincrono (202 Accepted), seta status AI_ANALYSIS_PENDING e processa em background ate AI_REPORT_READY; GET .../ai-reports lista relatorios do topico; GET .../ai-report-latest-response retorna apenas o response_payload mais recente; GET .../topic-ai-reports lista paginada por dono da conta.",
+      "description": "Conta ACTIVE obrigatoria em GET/POST/PUT/PATCH de topicos.\n\nListagem GET .../topics: page, size; filtros opcionais status e profile_type (snake_case), sozinhos ou em AND. Nao combine status com profile_type=ANNOTATOR (400).\n\nAuditoria topic_history (sem endpoint REST): ao criar topico com status persistido (ex. OPEN), grava-se OPEN; ao fechar (PATCH .../close), grava-se CLOSED com created_at. ANNOTATOR sem status nao gera linha na criacao.\n\nFechar: PATCH .../topics/{topicId}/close — apenas se status atual for OPEN.\n\nBloqueio de anotador: POST .../topics/{topicId}/annotator-blocks no contexto do dono do tópico; GET .../annotator-blocks retorna lista paginada com blocked_account_id e blocked_account_name.\n\nOpenAI: POST .../topics/{topicId}/ai-consolidation e assincrono (202 Accepted), seta status AI_ANALYSIS_PENDING e processa em background ate AI_REPORT_READY; GET .../ai-reports lista relatorios do topico; GET .../ai-report-latest-response retorna apenas o response_payload mais recente; GET .../topic-ai-reports lista paginada por dono da conta.",
       "item": [
         {
           "name": "Listar topicos (GET /api/v1/accounts/{accountId}/topics)",
@@ -720,6 +721,119 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 202', function () { pm.expect(pm.response.code).to.eql(202); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bloquear anotador (POST /api/v1/accounts/{accountId}/topics/{topicId}/annotator-blocks)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/annotator-blocks",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}",
+                "annotator-blocks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blocked_account_id\": {{blockedAccountId}}\n}"
+            },
+            "description": "Cria bloqueio permanente entre dono de tópico (accountId do path) e conta bloqueada, no contexto de um tópico do dono (topicId do path). Regras: tópico deve pertencer ao accountId; ambos ACTIVE; blocked_account_id já deve ter participado de algum tópico criado por accountId. Não existe desbloqueio."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }",
+                  "if (!pm.environment.get('topicId')) { pm.environment.set('topicId', 1); }",
+                  "if (!pm.environment.get('blockedAccountId')) { pm.environment.set('blockedAccountId', 2); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Retorno do bloqueio', function () {",
+                  "  pm.expect(json.id).to.be.a('number');",
+                  "  pm.expect(json.topic_owner_account_id).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.blocked_account_id).to.eql(Number(pm.environment.get('blockedAccountId')));",
+                  "  pm.expect(json.created_at).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar bloqueados por conta (GET /api/v1/accounts/{accountId}/annotator-blocks)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/annotator-blocks?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "annotator-blocks"
+              ],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Retorna bloqueados pelo dono (accountId do path), com paginação. Resposta: topic_owner_account_id + content[{blocked_account_id, blocked_account_name}] + metadados de página."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Retorno paginado de bloqueados', function () {",
+                  "  pm.expect(json.topic_owner_account_id).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.content).to.be.an('array');",
+                  "  if (json.content.length > 0) {",
+                  "    pm.expect(json.content[0].blocked_account_id).to.be.a('number');",
+                  "    pm.expect(json.content[0].blocked_account_name).to.be.a('string');",
+                  "  }",
+                  "  pm.expect(json.totalElements).to.be.a('number');",
+                  "  pm.expect(json.totalPages).to.be.a('number');",
+                  "});"
                 ]
               }
             }
@@ -1253,6 +1367,10 @@
     },
     {
       "key": "annotatorAccountId",
+      "value": "2"
+    },
+    {
+      "key": "blockedAccountId",
       "value": "2"
     },
     {

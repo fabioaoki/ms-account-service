@@ -4,8 +4,12 @@ import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.constant.TopicListQueryConstants;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
+import br.com.mechanic.account.service.annotator.AnnotatorLinkServiceBO;
+import br.com.mechanic.account.service.request.AnnotatorBlockCreateRequest;
 import br.com.mechanic.account.service.request.TopicCreateRequest;
 import br.com.mechanic.account.service.request.TopicUpdateRequest;
+import br.com.mechanic.account.service.response.AnnotatorBlockedAccountPageResponse;
+import br.com.mechanic.account.service.response.AnnotatorBlockResponse;
 import br.com.mechanic.account.service.response.TopicAiReportPageResponse;
 import br.com.mechanic.account.service.response.TopicAiReportResponse;
 import br.com.mechanic.account.service.response.TopicPageResponse;
@@ -41,6 +45,8 @@ public class TopicController {
     private final TopicAiConsolidationServiceBO topicAiConsolidationServiceBO;
 
     private final TopicAiConsolidationAsyncProcessor topicAiConsolidationAsyncProcessor;
+
+    private final AnnotatorLinkServiceBO annotatorLinkServiceBO;
 
     @GetMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.TOPICS_SEGMENT)
     public ResponseEntity<TopicPageResponse> getAllByAccountId(
@@ -151,6 +157,36 @@ public class TopicController {
             @PathVariable Long topicId
     ) {
         JsonNode body = topicAiConsolidationServiceBO.getLatestResponsePayload(accountId, topicId);
+        return ResponseEntity.ok(body);
+    }
+
+    @PostMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPICS_SEGMENT
+                    + ApiPathConstants.TOPIC_ID_PATH_VARIABLE
+                    + ApiPathConstants.ANNOTATOR_BLOCKS_SEGMENT
+    )
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<AnnotatorBlockResponse> blockAnnotatorAccountForTopic(
+            @PathVariable Long accountId,
+            @PathVariable Long topicId,
+            @Valid @RequestBody AnnotatorBlockCreateRequest request
+    ) {
+        AnnotatorBlockResponse body = annotatorLinkServiceBO.blockAnnotatorAccount(accountId, topicId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
+    }
+
+    @GetMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.ANNOTATOR_BLOCKS_SEGMENT
+    )
+    public ResponseEntity<AnnotatorBlockedAccountPageResponse> listBlockedAnnotatorAccounts(
+            @PathVariable Long accountId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        AnnotatorBlockedAccountPageResponse body =
+                annotatorLinkServiceBO.listBlockedAnnotatorAccounts(accountId, page, size);
         return ResponseEntity.ok(body);
     }
 }

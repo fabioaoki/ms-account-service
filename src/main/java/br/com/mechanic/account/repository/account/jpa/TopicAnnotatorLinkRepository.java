@@ -30,6 +30,8 @@ public interface TopicAnnotatorLinkRepository extends JpaRepository<TopicAnnotat
     @EntityGraph(attributePaths = {"topic", "topicOwnerAccount", "annotatorAccount"})
     Optional<TopicAnnotatorLink> findByTopic_IdAndAnnotatorAccount_Id(Long topicId, Long annotatorAccountId);
 
+    boolean existsByTopicOwnerAccount_IdAndAnnotatorAccount_Id(Long topicOwnerAccountId, Long annotatorAccountId);
+
     @EntityGraph(attributePaths = {"topic", "topicOwnerAccount", "annotatorAccount"})
     List<TopicAnnotatorLink> findAllByAnnotatorAccount_Id(Long annotatorAccountId, Sort sort);
 

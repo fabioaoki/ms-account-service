@@ -50,4 +50,16 @@ public final class TopicAnnotatorLinkValidationConstants {
 
     public static final String MESSAGE_TOPIC_ANNOTATOR_LINK_NOT_FOUND_FOR_RESUME =
             "No annotator link exists for this topic and annotator account.";
+
+    public static final String MESSAGE_BLOCKED_ACCOUNT_ID_REQUIRED =
+            "blocked_account_id is required.";
+
+    public static final String MESSAGE_BLOCKED_ACCOUNT_MUST_HAVE_PREVIOUS_PARTICIPATION =
+            "blocked_account_id must have participated in at least one topic created by this account.";
+
+    public static final String MESSAGE_BLOCKED_ACCOUNT_ALREADY_BLOCKED =
+            "This account has already been blocked by the topic creator.";
+
+    public static final String MESSAGE_ANNOTATOR_BLOCKED_BY_TOPIC_CREATOR =
+            "This annotator account is blocked by the topic creator and cannot be linked.";
 }

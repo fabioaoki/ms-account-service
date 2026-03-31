@@ -550,6 +550,146 @@ class AnnotatorControllerIntegrationTest {
                 ));
     }
 
+    @Test
+    @DisplayName("POST .../annotator-blocks com participação prévia cria bloqueio")
+    void blockAnnotatorAccountWhenAlreadyParticipatedReturnsCreated() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        post(annotatorBlocksPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorBlockJson(annotatorId))
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.topic_owner_account_id").value(ownerId))
+                .andExpect(jsonPath("$.blocked_account_id").value(annotatorId))
+                .andExpect(jsonPath("$.created_at").exists());
+    }
+
+    @Test
+    @DisplayName("POST .../annotator-blocks sem participação prévia retorna 400")
+    void blockAnnotatorAccountWhenNeverParticipatedReturnsBadRequest() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorBlocksPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorBlockJson(annotatorId))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_BLOCKED_ACCOUNT_MUST_HAVE_PREVIOUS_PARTICIPATION
+                ));
+    }
+
+    @Test
+    @DisplayName("POST .../annotator-link com anotador bloqueado retorna 400")
+    void createAnnotatorLinkWhenBlockedByTopicOwnerReturnsBadRequest() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long annotatorId = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        post(annotatorBlocksPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorBlockJson(annotatorId))
+                )
+                .andExpect(status().isCreated());
+
+        Long anotherTopicId = createSpeakerTopicAndGetId(ownerId);
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, anotherTopicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_ANNOTATOR_BLOCKED_BY_TOPIC_CREATOR
+                ));
+    }
+
+    @Test
+    @DisplayName("GET .../annotator-blocks retorna bloqueados paginados com id e nome")
+    void listBlockedAnnotatorAccountsReturnsPageWithIdAndName() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        Long blockedAccountIdOne = newActiveAnnotatorOnly();
+        Long blockedAccountIdTwo = newActiveAnnotatorOnly();
+        long topicId = createSpeakerTopicAndGetId(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(blockedAccountIdOne))
+                )
+                .andExpect(status().isCreated());
+        mockMvc.perform(
+                        post(annotatorBlocksPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorBlockJson(blockedAccountIdOne))
+                )
+                .andExpect(status().isCreated());
+
+        Long secondTopicId = createSpeakerTopicAndGetId(ownerId);
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, secondTopicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(blockedAccountIdTwo))
+                )
+                .andExpect(status().isCreated());
+        mockMvc.perform(
+                        post(annotatorBlocksPath(ownerId, secondTopicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorBlockJson(blockedAccountIdTwo))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        get(accountAnnotatorBlocksPath(ownerId))
+                                .param("page", "0")
+                                .param("size", "1")
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.topic_owner_account_id").value(ownerId))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].blocked_account_id").isNumber())
+                .andExpect(jsonPath("$.content[0].blocked_account_name").isString())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.size").value(1))
+                .andExpect(jsonPath("$.number").value(0));
+    }
+
+    @Test
+    @DisplayName("GET .../annotator-blocks com conta INACTIVE retorna 400")
+    void listBlockedAnnotatorAccountIdsInactiveOwnerReturnsBadRequest() throws Exception {
+        Long ownerId = newActiveSpeakerOwner();
+        mockMvc.perform(patch(accountDeactivatePath(ownerId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(accountAnnotatorBlocksPath(ownerId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        TopicAnnotatorLinkValidationConstants.MESSAGE_ACCOUNTS_MUST_BE_ACTIVE_FOR_ANNOTATOR_LINK
+                ));
+    }
+
     private Long newActiveSpeakerOwner() throws Exception {
         String email = "ann-own-" + UUID.randomUUID() + "@email.com";
         Long id = createAccountAndGetId(email, "Dono", "Speaker", LocalDate.now().minusYears(28));
@@ -679,6 +819,12 @@ class AnnotatorControllerIntegrationTest {
         return buildAnnotatorLinkJson(annotatorAccountId, resume);
     }
 
+    private static String buildAnnotatorBlockJson(Long blockedAccountId) {
+        return """
+                {"%s": %d}
+                """.formatted(AnnotatorLinkJsonConstants.BLOCKED_ACCOUNT_ID, blockedAccountId);
+    }
+
     private static String accountTopicsPath(Long accountId) {
         return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.TOPICS_SEGMENT;
     }
@@ -704,5 +850,22 @@ class AnnotatorControllerIntegrationTest {
                 + "/"
                 + annotatorAccountId
                 + ApiPathConstants.TOPIC_ANNOTATOR_LINKS_SEGMENT;
+    }
+
+    private static String annotatorBlocksPath(Long topicOwnerAccountId, Long topicId) {
+        return ApiPathConstants.ACCOUNTS_BASE_PATH
+                + "/"
+                + topicOwnerAccountId
+                + ApiPathConstants.TOPICS_SEGMENT
+                + "/"
+                + topicId
+                + ApiPathConstants.ANNOTATOR_BLOCKS_SEGMENT;
+    }
+
+    private static String accountAnnotatorBlocksPath(Long topicOwnerAccountId) {
+        return ApiPathConstants.ACCOUNTS_BASE_PATH
+                + "/"
+                + topicOwnerAccountId
+                + ApiPathConstants.ANNOTATOR_BLOCKS_SEGMENT;
     }
 }

@@ -36,6 +36,8 @@ public final class ApiPathConstants {
      */
     public static final String ANNOTATOR_LINK_RESUME_SEGMENT = "/resume";
 
+    public static final String ANNOTATOR_BLOCKS_SEGMENT = "/annotator-blocks";
+
     /**
      * Ex.: {@code /api/v1/accounts/1/topics/42} (PUT parcial por tópico).
      */
@@ -59,6 +61,12 @@ public final class ApiPathConstants {
      */
     public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_RESUME_ANT_PATTERN =
             ACCOUNTS_BASE_PATH + "/*/topics/*/annotator-link/resume";
+
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_BLOCKS_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topics/*/annotator-blocks";
+
+    public static final String ACCOUNTS_ACCOUNT_ID_ANNOTATOR_BLOCKS_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/annotator-blocks";
 
     public static final String ACCOUNT_DEACTIVATE_SEGMENT = "/deactivate";
 
