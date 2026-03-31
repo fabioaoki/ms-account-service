@@ -1,0 +1,17 @@
+# Copie para application-local.properties no mesmo diretório e nunca faça commit do ficheiro real.
+# Spring Boot lê automaticamente ./config/application-{perfil}.properties quando o perfil está ativo.
+#
+# Perfil ativo: local (já definido na configuração de execução do Cursor em .vscode/launch.json)
+#
+spring.datasource.url=jdbc:postgresql://localhost:5433/annotation_app
+spring.datasource.username=annotation_app
+spring.datasource.password=1234
+
+app.openai.enabled=true
+app.openai.api-key=COLOQUE_SUA_OPENAI_KEY_AQUI
+app.openai.model=gpt-4o-mini
+# Opcional: use o assistente que configurou no painel OpenAI (ignora app.openai.consolidation-system-prompt no envio).
+# app.openai.assistant-id=asst_...
+# app.openai.base-url=https://api.openai.com
+# Prompt longo opcional (substitui o default em código):
+# app.openai.consolidation-system-prompt=...

@@ -47,6 +47,21 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN)
                         .permitAll()
                         .requestMatchers(
+                                HttpMethod.POST,
+                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_AI_CONSOLIDATION_ANT_PATTERN
+                        )
+                        .permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_AI_REPORTS_ANT_PATTERN
+                        )
+                        .permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPIC_AI_REPORTS_ANT_PATTERN
+                        )
+                        .permitAll()
+                        .requestMatchers(
                                 HttpMethod.GET,
                                 ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPIC_ANNOTATOR_LINKS_ANT_PATTERN
                         )

@@ -3,7 +3,7 @@
     "name": "ms-account-service",
     "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.22.0"
+    "version": "1.23.0"
   },
   "item": [
     {
@@ -597,7 +597,7 @@
     },
     {
       "name": "TopicController",
-      "description": "Conta ACTIVE obrigatoria em GET/POST/PUT/PATCH de topicos.\n\nListagem GET .../topics: page, size; filtros opcionais status e profile_type (snake_case), sozinhos ou em AND. Nao combine status com profile_type=ANNOTATOR (400).\n\nAuditoria topic_history (sem endpoint REST): ao criar topico com status persistido (ex. OPEN), grava-se OPEN; ao fechar (PATCH .../close), grava-se CLOSED com created_at. ANNOTATOR sem status nao gera linha na criacao.\n\nFechar: PATCH .../topics/{topicId}/close — apenas se status atual for OPEN.",
+      "description": "Conta ACTIVE obrigatoria em GET/POST/PUT/PATCH de topicos.\n\nListagem GET .../topics: page, size; filtros opcionais status e profile_type (snake_case), sozinhos ou em AND. Nao combine status com profile_type=ANNOTATOR (400).\n\nAuditoria topic_history (sem endpoint REST): ao criar topico com status persistido (ex. OPEN), grava-se OPEN; ao fechar (PATCH .../close), grava-se CLOSED com created_at. ANNOTATOR sem status nao gera linha na criacao.\n\nFechar: PATCH .../topics/{topicId}/close — apenas se status atual for OPEN.\n\nOpenAI: POST .../topics/{topicId}/ai-consolidation (sem body) monta o payload a partir do historico de resumos e chama OpenAI no servidor (topicos com workflow: status OPEN); GET .../ai-reports lista relatorios do topico; GET .../topic-ai-reports lista paginada por dono da conta.",
       "item": [
         {
           "name": "Listar topicos (GET /api/v1/accounts/{accountId}/topics)",
@@ -669,6 +669,125 @@
                   "  pm.expect(json.status).to.eql('CLOSED');",
                   "  pm.expect(json.lastUpdatedAt).to.be.a('string');",
                   "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consolidar com OpenAI (POST .../topics/{topicId}/ai-consolidation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/ai-consolidation",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}",
+                "ai-consolidation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "description": "Sem corpo. Servidor: lê topic_annotator_link_history com resume não vazio, chama OpenAI (chat completions ou Assistants conforme app.openai), valida JSON do modelo e persiste topic_ai_report. Requisitos típicos: conta ACTIVE; tópico da conta; perfis com workflow (ex. SPEAKER) devem estar OPEN; deve existir ao menos um resumo; app.openai.enabled e API key no servidor. Resposta 200 TopicAiReportResponse (id, topic_id, request_payload, response_payload, etc.)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }",
+                  "if (!pm.environment.get('topicId')) { pm.environment.set('topicId', 1); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const j = pm.response.json();",
+                  "  pm.test('Relatório IA', function () {",
+                  "    pm.expect(j.id).to.be.a('number');",
+                  "    pm.expect(j.topic_id).to.eql(Number(pm.environment.get('topicId')));",
+                  "    pm.expect(j.response_payload).to.be.an('object');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar relatórios IA do tópico (GET .../topics/{topicId}/ai-reports)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/ai-reports",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}",
+                "ai-reports"
+              ]
+            },
+            "description": "Array de TopicAiReportResponse do tópico (ordem decrescente por criação). Dono do tópico deve ser o accountId do path."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }",
+                  "if (!pm.environment.get('topicId')) { pm.environment.set('topicId', 1); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar relatórios IA da conta (GET .../topic-ai-reports)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topic-ai-reports?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts", "{{accountId}}", "topic-ai-reports"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" }
+              ]
+            },
+            "description": "Paginação de relatórios em que topic_owner_account_id = accountId do path. Parâmetros opcionais: page, size."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }"
                 ]
               }
             }

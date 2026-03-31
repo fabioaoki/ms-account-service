@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 public class TopicAnnotatorLinkHistoryRepositoryJpa implements TopicAnnotatorLinkHistoryRepositoryImpl {
@@ -29,5 +30,12 @@ public class TopicAnnotatorLinkHistoryRepositoryJpa implements TopicAnnotatorLin
     @Override
     public long countByLinkId(Long linkId) {
         return repository.countByLink_Id(linkId);
+    }
+
+    @Override
+    public List<TopicAnnotatorLinkHistory> findAllWithNonBlankResumeByTopicIdOrderByCreatedAtAsc(Long topicId) {
+        return repository.findAllWithResumeNotNullByTopicIdOrderByCreatedAtAsc(topicId).stream()
+                .filter(h -> !h.getResume().isBlank())
+                .toList();
     }
 }

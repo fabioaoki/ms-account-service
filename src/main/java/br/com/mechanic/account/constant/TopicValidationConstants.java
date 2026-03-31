@@ -67,4 +67,37 @@ public final class TopicValidationConstants {
 
     public static final String MESSAGE_TOPIC_CLOSE_ONLY_ALLOWED_FROM_OPEN =
             "Topic can be closed only when status is OPEN.";
+
+    public static final String MESSAGE_TOPIC_MUST_BE_OPEN_FOR_AI_CONSOLIDATION =
+            "AI consolidation requires the topic to be OPEN for profiles with workflow status.";
+
+    public static final String MESSAGE_TOPIC_HAS_NO_ANNOTATOR_RESUMES_FOR_AI =
+            "No rows in topic_annotator_link_history with non-empty resume for this topic; nothing to consolidate.";
+
+    public static final String MESSAGE_OPENAI_NOT_ENABLED =
+            "OpenAI consolidation is disabled in this environment.";
+
+    public static final String MESSAGE_OPENAI_API_KEY_NOT_CONFIGURED =
+            "OpenAI integration is enabled but the API key is not configured.";
+
+    public static final String MESSAGE_OPENAI_REVIEW_ASSISTANT_NOT_CONFIGURED =
+            "OpenAI review assistant is not configured (assistant-linguage-id).";
+
+    public static final String MESSAGE_OPENAI_RESPONSE_NOT_VALID_JSON =
+            "The model returned content that is not valid JSON.";
+
+    public static final String MESSAGE_OPENAI_CHAT_COMPLETION_FAILED =
+            "The AI provider request failed; try again later.";
+
+    public static final String MESSAGE_OPENAI_ASSISTANT_RUN_FAILED =
+            "The OpenAI assistant run did not finish successfully; review assistant configuration or try again.";
+
+    public static final String MESSAGE_OPENAI_ASSISTANT_POLL_TIMEOUT =
+            "The OpenAI assistant run timed out while waiting for completion.";
+
+    public static final String MESSAGE_OPENAI_REVIEW_RESPONSE_NOT_VALID_JSON =
+            "The review assistant returned an invalid JSON payload.";
+
+    public static final String MESSAGE_OPENAI_REVIEW_REJECTED_MAX_ATTEMPTS =
+            "The review assistant rejected the generated report for the maximum allowed attempts.";
 }

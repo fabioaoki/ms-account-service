@@ -15,6 +15,8 @@ public final class EntityConstants {
     public static final String TOPIC_HISTORY_TABLE_NAME = "topic_history";
     public static final String TOPIC_ANNOTATOR_LINK_TABLE_NAME = "topic_annotator_link";
     public static final String TOPIC_ANNOTATOR_LINK_HISTORY_TABLE_NAME = "topic_annotator_link_history";
+    public static final String TOPIC_AI_REPORT_TABLE_NAME = "topic_ai_report";
+    public static final String TOPIC_AI_PROCESSING_ERROR_TABLE_NAME = "topic_ai_processing_error";
 
     public static final String ACCOUNT_EMAIL_UK = "uk_account_email";
     public static final String PROFILE_TYPE_UK = "uk_profile_type";
@@ -33,7 +35,16 @@ public final class EntityConstants {
     public static final String TOPIC_ANNOTATOR_LINK_HISTORY_LINK_FK_NAME = "fk_talh_link";
     public static final String TOPIC_ANNOTATOR_LINK_HISTORY_ANNOTATOR_FK_NAME = "fk_talh_annotator";
 
+    public static final String TOPIC_AI_REPORT_TOPIC_FK_NAME = "fk_topic_ai_report_topic";
+    public static final String TOPIC_AI_REPORT_OWNER_FK_NAME = "fk_topic_ai_report_owner";
+    public static final String TOPIC_AI_PROCESSING_ERROR_TOPIC_FK_NAME = "fk_topic_ai_processing_error_topic";
+
     public static final String TOPIC_ANNOTATOR_LINK_TOPIC_ANNOTATOR_UK_NAME = "uk_tal_topic_annotator";
+
+    public static final String COLUMN_OPENAI_MODEL = "openai_model";
+    public static final String COLUMN_REQUEST_PAYLOAD_JSON = "request_payload_json";
+    public static final String COLUMN_RESPONSE_PAYLOAD_JSON = "response_payload_json";
+    public static final String COLUMN_PROBLEMATIC_TEXT = "problematic_text";
 
     public static final String COLUMN_EMAIL = "email";
     public static final String COLUMN_NAME = "name";
@@ -71,4 +82,8 @@ public final class EntityConstants {
     public static final int TOPIC_TITLE_COLUMN_LENGTH = 500;
     public static final int TOPIC_CONTEXT_COLUMN_LENGTH = 4000;
     public static final int TOPIC_STATUS_COLUMN_LENGTH = 32;
+
+    public static final int OPENAI_MODEL_COLUMN_LENGTH = 128;
+
+    public static final int TOPIC_AI_PROCESSING_ERROR_TEXT_COLUMN_LENGTH = 4000;
 }

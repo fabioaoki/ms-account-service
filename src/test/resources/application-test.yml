@@ -1,3 +1,11 @@
+app:
+  openai:
+    enabled: true
+    api-key: test-openai-key
+    model: gpt-4o-mini
+    base-url: https://api.openai.com
+    assistant-linguage-id: asst-test-linguage
+
 spring:
   flyway:
     enabled: false

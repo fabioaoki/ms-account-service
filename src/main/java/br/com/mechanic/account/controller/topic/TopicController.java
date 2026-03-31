@@ -6,8 +6,12 @@ import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.service.request.TopicCreateRequest;
 import br.com.mechanic.account.service.request.TopicUpdateRequest;
+import br.com.mechanic.account.service.response.TopicAiReportPageResponse;
+import br.com.mechanic.account.service.response.TopicAiReportResponse;
 import br.com.mechanic.account.service.response.TopicPageResponse;
 import br.com.mechanic.account.service.response.TopicResponse;
+import br.com.mechanic.account.service.topic.TopicAiConsolidationAsyncProcessor;
+import br.com.mechanic.account.service.topic.TopicAiConsolidationServiceBO;
 import br.com.mechanic.account.service.topic.TopicServiceBO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,12 +28,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(ApiPathConstants.ACCOUNTS_BASE_PATH)
 public class TopicController {
 
     private final TopicServiceBO topicServiceBO;
+
+    private final TopicAiConsolidationServiceBO topicAiConsolidationServiceBO;
+
+    private final TopicAiConsolidationAsyncProcessor topicAiConsolidationAsyncProcessor;
 
     @GetMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.TOPICS_SEGMENT)
     public ResponseEntity<TopicPageResponse> getAllByAccountId(
@@ -87,6 +97,45 @@ public class TopicController {
             @PathVariable Long topicId
     ) {
         TopicResponse body = topicServiceBO.closeTopic(accountId, topicId);
+        return ResponseEntity.ok(body);
+    }
+
+    @PostMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPICS_SEGMENT
+                    + ApiPathConstants.TOPIC_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPIC_AI_CONSOLIDATION_SEGMENT
+    )
+    public ResponseEntity<Void> consolidateTopicNotesWithAi(
+            @PathVariable Long accountId,
+            @PathVariable Long topicId
+    ) {
+        topicAiConsolidationServiceBO.enqueueReportGeneration(accountId, topicId);
+        topicAiConsolidationAsyncProcessor.process(accountId, topicId);
+        return ResponseEntity.accepted().build();
+    }
+
+    @GetMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPICS_SEGMENT
+                    + ApiPathConstants.TOPIC_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPIC_AI_REPORTS_SEGMENT
+    )
+    public ResponseEntity<List<TopicAiReportResponse>> listAiReportsByTopic(
+            @PathVariable Long accountId,
+            @PathVariable Long topicId
+    ) {
+        return ResponseEntity.ok(topicAiConsolidationServiceBO.listReportsByTopic(accountId, topicId));
+    }
+
+    @GetMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_TOPIC_AI_REPORTS_SEGMENT)
+    public ResponseEntity<TopicAiReportPageResponse> listAiReportsByOwnerAccount(
+            @PathVariable Long accountId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        TopicAiReportPageResponse body =
+                topicAiConsolidationServiceBO.listReportsByOwnerAccount(accountId, page, size);
         return ResponseEntity.ok(body);
     }
 }

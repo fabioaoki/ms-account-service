@@ -88,4 +88,19 @@ public final class ApiPathConstants {
      */
     public static final String ACCOUNTS_ACCOUNT_ID_TOPIC_ANNOTATOR_LINKS_ANT_PATTERN =
             ACCOUNTS_BASE_PATH + "/*/topic-annotator-links";
+
+    public static final String TOPIC_AI_CONSOLIDATION_SEGMENT = "/ai-consolidation";
+
+    public static final String TOPIC_AI_REPORTS_SEGMENT = "/ai-reports";
+
+    public static final String ACCOUNT_TOPIC_AI_REPORTS_SEGMENT = "/topic-ai-reports";
+
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_AI_CONSOLIDATION_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topics/*/ai-consolidation";
+
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_AI_REPORTS_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topics/*/ai-reports";
+
+    public static final String ACCOUNTS_ACCOUNT_ID_TOPIC_AI_REPORTS_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/topic-ai-reports";
 }
