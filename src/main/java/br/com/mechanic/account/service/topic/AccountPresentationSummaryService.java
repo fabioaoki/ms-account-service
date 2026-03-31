@@ -10,6 +10,7 @@ import br.com.mechanic.account.exception.AccountException;
 import br.com.mechanic.account.repository.account.impl.AccountPresentationSummaryRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.AccountProfileRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.AccountRepositoryImpl;
+import br.com.mechanic.account.security.ApiAccessValidation;
 import br.com.mechanic.account.service.request.AccountPresentationSummaryUpsertRequest;
 import br.com.mechanic.account.service.response.AccountPresentationSummaryResponse;
 import lombok.RequiredArgsConstructor;
@@ -27,10 +28,12 @@ public class AccountPresentationSummaryService implements AccountPresentationSum
     private final AccountProfileRepositoryImpl accountProfileRepository;
     private final AccountPresentationSummaryRepositoryImpl accountPresentationSummaryRepository;
     private final Clock clock;
+    private final ApiAccessValidation apiAccessValidation;
 
     @Override
     @Transactional
     public AccountPresentationSummaryResponse createSummary(Long accountId, AccountPresentationSummaryUpsertRequest request) {
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         Account account = getAccountOrThrowAndAssertActiveForTopicEndpoints(accountId);
         assertAccountHasMoreThanOneProfileType(accountId);
         if (accountPresentationSummaryRepository.existsByAccountId(accountId)) {
@@ -53,6 +56,7 @@ public class AccountPresentationSummaryService implements AccountPresentationSum
     @Override
     @Transactional
     public AccountPresentationSummaryResponse updateSummary(Long accountId, AccountPresentationSummaryUpsertRequest request) {
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         getAccountOrThrowAndAssertActiveForTopicEndpoints(accountId);
         assertAccountHasMoreThanOneProfileType(accountId);
         AccountPresentationSummary existing = accountPresentationSummaryRepository.findByAccountId(accountId)
@@ -68,6 +72,7 @@ public class AccountPresentationSummaryService implements AccountPresentationSum
     @Override
     @Transactional(readOnly = true)
     public AccountPresentationSummaryResponse getSummary(Long accountId) {
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         getAccountOrThrowAndAssertActiveForTopicEndpoints(accountId);
         AccountPresentationSummary existing = accountPresentationSummaryRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new AccountException(

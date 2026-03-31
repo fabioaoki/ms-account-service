@@ -2,6 +2,9 @@ package br.com.mechanic.account.controller.annotator;
 
 import br.com.mechanic.account.constant.AnnotatorLinkJsonConstants;
 import br.com.mechanic.account.constant.ApiPathConstants;
+import br.com.mechanic.account.constant.OpenApiOperationDocumentationConstants;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.service.annotator.AnnotatorLinkServiceBO;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkCreateRequest;
@@ -27,10 +30,18 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(ApiPathConstants.ACCOUNTS_BASE_PATH)
+@Tag(
+        name = OpenApiOperationDocumentationConstants.Tag.ANNOTATORS_NAME,
+        description = OpenApiOperationDocumentationConstants.Tag.ANNOTATORS_DESCRIPTION
+)
 public class AnnotatorController {
 
     private final AnnotatorLinkServiceBO annotatorLinkServiceBO;
 
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Annotator.LIST_LINKS_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Annotator.LIST_LINKS_DESCRIPTION
+    )
     @GetMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.TOPIC_ANNOTATOR_LINKS_SEGMENT
     )
@@ -50,6 +61,10 @@ public class AnnotatorController {
         ));
     }
 
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Annotator.CREATE_LINK_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Annotator.CREATE_LINK_DESCRIPTION
+    )
     @PostMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.TOPICS_SEGMENT
@@ -66,6 +81,7 @@ public class AnnotatorController {
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Annotator.UPDATE_RESUME_SUMMARY)
     @PutMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.TOPICS_SEGMENT

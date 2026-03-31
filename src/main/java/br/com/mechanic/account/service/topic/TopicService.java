@@ -22,8 +22,10 @@ import br.com.mechanic.account.repository.account.impl.TopicHistoryRepositoryImp
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
 import br.com.mechanic.account.service.request.TopicCreateRequest;
 import br.com.mechanic.account.service.request.TopicUpdateRequest;
+import br.com.mechanic.account.security.ApiAccessValidation;
 import br.com.mechanic.account.service.response.TopicPageResponse;
 import br.com.mechanic.account.service.response.TopicResponse;
+import br.com.mechanic.account.service.response.TopicTableResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -55,11 +57,13 @@ public class TopicService implements TopicServiceBO {
     private final TopicHistoryRepositoryImpl topicHistoryRepository;
     private final TopicAnnotatorLinkRepositoryImpl topicAnnotatorLinkRepository;
     private final Clock clock;
+    private final ApiAccessValidation apiAccessValidation;
 
     @Override
     @Transactional
     public TopicResponse create(Long accountId, TopicCreateRequest request) {
         log.info(TopicServiceLogConstants.CREATE_TOPIC_FLOW_STARTED, accountId);
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         Account account = getAccountOrThrowAndAssertActiveForTopics(accountId);
         if (request.profileType() == null && request.endDate() != null) {
             throw new AccountException(TopicValidationConstants.MESSAGE_PROFILE_TYPE_REQUIRED_WHEN_END_DATE_PRESENT);
@@ -90,8 +94,9 @@ public class TopicService implements TopicServiceBO {
 
     @Override
     @Transactional
-    public TopicResponse update(Long accountId, Long topicId, TopicUpdateRequest request) {
+    public TopicTableResponse update(Long accountId, Long topicId, TopicUpdateRequest request) {
         log.info(TopicServiceLogConstants.UPDATE_TOPIC_FLOW_STARTED, accountId, topicId);
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         Account account = getAccountOrThrowAndAssertActiveForTopics(accountId);
         Topic topic = topicRepository.findByIdAndAccountId(topicId, accountId)
                 .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
@@ -127,15 +132,17 @@ public class TopicService implements TopicServiceBO {
             }
         }
 
+        topic.setLastUpdatedAt(LocalDateTime.now(clock));
         Topic saved = topicRepository.save(topic);
         log.info(TopicServiceLogConstants.UPDATE_TOPIC_FLOW_COMPLETED, accountId, saved.getId());
-        return toTopicResponseWithAnnotatorLinks(saved);
+        return TopicMapper.toTableResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public TopicResponse getByTopicIdAndAccountId(Long accountId, Long topicId) {
         log.info(TopicServiceLogConstants.GET_TOPIC_BY_ID_FLOW_STARTED, accountId, topicId);
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         getAccountOrThrowAndAssertActiveForTopics(accountId);
         Topic topic = topicRepository.findByIdAndAccountId(topicId, accountId)
                 .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
@@ -162,6 +169,7 @@ public class TopicService implements TopicServiceBO {
                 params.page(),
                 params.size()
         );
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         getAccountOrThrowAndAssertActiveForTopics(accountId);
         Pageable pageable = buildTopicListPageable(params.page(), params.size());
         Page<Topic> pageResult = topicRepository.findAllByAccountIdWithOptionalFilters(
@@ -177,6 +185,7 @@ public class TopicService implements TopicServiceBO {
     @Transactional
     public TopicResponse closeTopic(Long accountId, Long topicId) {
         log.info(TopicServiceLogConstants.CLOSE_TOPIC_FLOW_STARTED, accountId, topicId);
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         getAccountOrThrowAndAssertActiveForTopics(accountId);
         Topic topic = topicRepository.findByIdAndAccountId(topicId, accountId)
                 .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
@@ -184,6 +193,7 @@ public class TopicService implements TopicServiceBO {
             throw new AccountException(TopicValidationConstants.MESSAGE_TOPIC_CLOSE_ONLY_ALLOWED_FROM_OPEN);
         }
         topic.setStatus(TopicStatusEnum.CLOSED);
+        topic.setLastUpdatedAt(LocalDateTime.now(clock));
         Topic saved = topicRepository.save(topic);
         saveTopicStatusHistory(saved, TopicStatusEnum.CLOSED);
         log.info(TopicServiceLogConstants.CLOSE_TOPIC_FLOW_COMPLETED, accountId, saved.getId());

@@ -7,6 +7,7 @@ import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.service.response.TopicAnnotatorLinkSummaryResponse;
 import br.com.mechanic.account.service.response.TopicResponse;
+import br.com.mechanic.account.service.response.TopicTableResponse;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -52,6 +53,21 @@ public final class TopicMapper {
                 .endDate(clientEndDate)
                 .profileType(profileType)
                 .build();
+    }
+
+    /** Apenas colunas da tabela {@code topic} (FK {@code account_id} como {@code accountId}). */
+    public static TopicTableResponse toTableResponse(Topic topic) {
+        return new TopicTableResponse(
+                topic.getId(),
+                topic.getAccount().getId(),
+                topic.getTitle(),
+                topic.getContext(),
+                topic.getCreatedAt(),
+                topic.getLastUpdatedAt(),
+                topic.getEndDate(),
+                topic.getStatus(),
+                topic.getProfileType()
+        );
     }
 
     public static TopicResponse toResponse(Topic topic, List<TopicAnnotatorLink> topicAnnotatorLinks) {

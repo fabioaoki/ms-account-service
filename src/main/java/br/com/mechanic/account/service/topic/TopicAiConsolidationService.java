@@ -28,6 +28,7 @@ import br.com.mechanic.account.repository.account.impl.TopicHistoryRepositoryImp
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
 import br.com.mechanic.account.service.openai.OpenAiAssistantReviewPort;
 import br.com.mechanic.account.service.openai.OpenAiAssistantReviewResult;
+import br.com.mechanic.account.security.ApiAccessValidation;
 import br.com.mechanic.account.service.openai.OpenAiChatCompletionPort;
 import br.com.mechanic.account.service.response.TopicAiReportPageResponse;
 import br.com.mechanic.account.service.response.TopicAiReportResponse;
@@ -66,11 +67,13 @@ public class TopicAiConsolidationService implements TopicAiConsolidationServiceB
     private final OpenAiAssistantReviewPort openAiAssistantReviewPort;
     private final OpenAiProperties openAiProperties;
     private final ObjectMapper objectMapper;
+    private final ApiAccessValidation apiAccessValidation;
 
     @Override
     @Transactional
     public void enqueueReportGeneration(Long accountId, Long topicId) {
         log.info(TopicAiConsolidationLogConstants.CONSOLIDATION_FLOW_STARTED, accountId, topicId);
+        apiAccessValidation.requireOwnerFull(accountId);
         if (!openAiProperties.isEnabled()) {
             throw new AccountException(TopicValidationConstants.MESSAGE_OPENAI_NOT_ENABLED);
         }
@@ -174,6 +177,7 @@ public class TopicAiConsolidationService implements TopicAiConsolidationServiceB
     @Override
     @Transactional(readOnly = true)
     public List<TopicAiReportResponse> listReportsByTopic(Long accountId, Long topicId) {
+        apiAccessValidation.requireOwnerFull(accountId);
         getAccountOrThrowAndAssertActive(accountId);
         topicRepository.findByIdAndAccountId(topicId, accountId)
                 .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED));
@@ -185,6 +189,7 @@ public class TopicAiConsolidationService implements TopicAiConsolidationServiceB
     @Override
     @Transactional(readOnly = true)
     public TopicAiReportPageResponse listReportsByOwnerAccount(Long accountId, Integer page, Integer size) {
+        apiAccessValidation.requireOwnerFull(accountId);
         getAccountOrThrowAndAssertActive(accountId);
         int resolvedPage = page == null ? TopicPaginationConstants.DEFAULT_PAGE_NUMBER : page;
         int resolvedSize = size == null ? TopicPaginationConstants.DEFAULT_PAGE_SIZE : size;
@@ -215,6 +220,7 @@ public class TopicAiConsolidationService implements TopicAiConsolidationServiceB
     @Override
     @Transactional(readOnly = true)
     public JsonNode getLatestResponsePayload(Long accountId, Long topicId) {
+        apiAccessValidation.requireOwnerFull(accountId);
         getAccountOrThrowAndAssertActive(accountId);
         Topic topic = getTopicOwnedByAccountOrThrow(topicId, accountId);
         if (topic.getStatus() != TopicStatusEnum.AI_REPORT_READY) {

@@ -5,7 +5,8 @@ import lombok.NoArgsConstructor;
 
 /**
  * JSON property names for topic API: {@link br.com.mechanic.account.service.request.TopicCreateRequest},
- * {@link br.com.mechanic.account.service.request.TopicUpdateRequest}, {@link br.com.mechanic.account.service.response.TopicResponse}.
+ * {@link br.com.mechanic.account.service.request.TopicUpdateRequest}, {@link br.com.mechanic.account.service.response.TopicResponse},
+ * {@link br.com.mechanic.account.service.response.TopicTableResponse}.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TopicCreateRequestJsonConstants {

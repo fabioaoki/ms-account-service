@@ -1,6 +1,10 @@
 package br.com.mechanic.account.controller.account;
 
+import br.com.mechanic.account.annotation.PublicEndpoint;
 import br.com.mechanic.account.constant.ApiPathConstants;
+import br.com.mechanic.account.constant.OpenApiOperationDocumentationConstants;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.mechanic.account.service.account.AccountServiceBO;
 import br.com.mechanic.account.service.request.AccountPresentationSummaryUpsertRequest;
 import br.com.mechanic.account.service.request.AccountProfileLinkRequest;
@@ -31,12 +35,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(ApiPathConstants.ACCOUNTS_BASE_PATH)
+@Tag(
+        name = OpenApiOperationDocumentationConstants.Tag.ACCOUNTS_NAME,
+        description = OpenApiOperationDocumentationConstants.Tag.ACCOUNTS_DESCRIPTION
+)
 public class AccountController {
 
     private final AccountServiceBO accountServiceBO;
 
     private final AccountPresentationSummaryServiceBO accountPresentationSummaryServiceBO;
 
+    @PublicEndpoint
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Account.CREATE_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Account.CREATE_DESCRIPTION
+    )
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<AccountResponse> create(@Valid @RequestBody UserCreateRequest request) {
@@ -44,6 +57,10 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Account.GET_BY_ID_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Account.GET_BY_ID_DESCRIPTION
+    )
     @GetMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE)
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<AccountDetailResponse> getByAccountId(@PathVariable Long accountId) {
@@ -51,18 +68,21 @@ public class AccountController {
         return ResponseEntity.ok(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Account.DEACTIVATE_SUMMARY)
     @PatchMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_DEACTIVATE_SEGMENT)
     @ResponseStatus(HttpStatus.OK)
     public void deactivateAccount(@PathVariable Long accountId) {
         accountServiceBO.deactivateAccount(accountId);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Account.ACTIVATE_SUMMARY)
     @PatchMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_ACTIVATE_SEGMENT)
     @ResponseStatus(HttpStatus.OK)
     public void activateAccount(@PathVariable Long accountId) {
         accountServiceBO.activateAccount(accountId);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Account.UPDATE_SUMMARY)
     @PatchMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE)
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<AccountUpdateResponse> update(
@@ -73,6 +93,10 @@ public class AccountController {
         return ResponseEntity.ok(body);
     }
 
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Account.LINK_PROFILE_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Account.LINK_PROFILE_DESCRIPTION
+    )
     @PostMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_PROFILES_SEGMENT)
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<AccountProfileLinkResponse> linkProfile(
@@ -83,6 +107,7 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Account.UNLINK_PROFILE_SUMMARY)
     @DeleteMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_PROFILES_SEGMENT)
     @ResponseStatus(HttpStatus.OK)
     public void unlinkProfile(
@@ -92,6 +117,7 @@ public class AccountController {
         accountServiceBO.unlinkProfileFromAccount(accountId, request);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Account.CREATE_PRESENTATION_SUMMARY)
     @PostMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.ACCOUNT_PRESENTATION_SUMMARY_SEGMENT
@@ -105,6 +131,7 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Account.UPDATE_PRESENTATION_SUMMARY)
     @PutMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.ACCOUNT_PRESENTATION_SUMMARY_SEGMENT
@@ -117,6 +144,7 @@ public class AccountController {
         return ResponseEntity.ok(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Account.GET_PRESENTATION_SUMMARY)
     @GetMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.ACCOUNT_PRESENTATION_SUMMARY_SEGMENT

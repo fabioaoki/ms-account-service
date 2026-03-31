@@ -21,6 +21,7 @@ import br.com.mechanic.account.repository.account.impl.AccountAnnotatorBlockRepo
 import br.com.mechanic.account.repository.account.impl.TopicAnnotatorLinkHistoryRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicAnnotatorLinkRepositoryImpl;
 import br.com.mechanic.account.repository.account.impl.TopicRepositoryImpl;
+import br.com.mechanic.account.security.ApiAccessValidation;
 import br.com.mechanic.account.service.request.AnnotatorBlockCreateRequest;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkCreateRequest;
 import br.com.mechanic.account.service.request.TopicAnnotatorLinkResumeUpdateRequest;
@@ -54,6 +55,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
     private final TopicAnnotatorLinkRepositoryImpl topicAnnotatorLinkRepository;
     private final TopicAnnotatorLinkHistoryRepositoryImpl topicAnnotatorLinkHistoryRepository;
     private final Clock clock;
+    private final ApiAccessValidation apiAccessValidation;
 
     @Override
     @Transactional
@@ -69,6 +71,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
                 request.annotatorAccountId()
         );
 
+        apiAccessValidation.requireAnnotatorLinkParticipant(topicOwnerAccountId, request.annotatorAccountId());
         Account topicOwnerAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(topicOwnerAccountId);
         Topic topic = topicRepository.findByIdAndAccountId(topicId, topicOwnerAccountId)
                 .orElseThrow(() -> new AccountException(
@@ -135,6 +138,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
             Long topicId,
             AnnotatorBlockCreateRequest request
     ) {
+        apiAccessValidation.requireOwnerStandardOrFull(topicOwnerAccountId);
         Account blockerAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(topicOwnerAccountId);
         topicRepository.findByIdAndAccountId(topicId, topicOwnerAccountId)
                 .orElseThrow(() -> new AccountException(
@@ -175,6 +179,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
             Integer page,
             Integer size
     ) {
+        apiAccessValidation.requireOwnerStandardOrFull(topicOwnerAccountId);
         Account blockerAccount = getAccountOrThrowAndAssertActiveForAnnotatorLink(topicOwnerAccountId);
         int resolvedPage = page == null ? TopicPaginationConstants.DEFAULT_PAGE_NUMBER : page;
         int resolvedSize = size == null ? TopicPaginationConstants.DEFAULT_PAGE_SIZE : size;
@@ -213,6 +218,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
             Long topicId,
             TopicAnnotatorLinkResumeUpdateRequest request
     ) {
+        apiAccessValidation.requireAnnotatorLinkParticipant(topicOwnerAccountId, request.annotatorAccountId());
         log.info(
                 AnnotatorLinkServiceLogConstants.UPDATE_LINK_RESUME_FLOW_STARTED,
                 topicOwnerAccountId,
@@ -276,6 +282,7 @@ public class AnnotatorLinkService implements AnnotatorLinkServiceBO {
             Long topicOwnerAccountId,
             TopicStatusEnum topicStatus
     ) {
+        apiAccessValidation.requireAnnotatorListingOwnAccount(annotatorAccountId);
         log.info(
                 AnnotatorLinkServiceLogConstants.LIST_LINKS_FOR_ANNOTATOR_FLOW_STARTED,
                 annotatorAccountId,

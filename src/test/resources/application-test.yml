@@ -1,4 +1,8 @@
 app:
+  security:
+    jwt:
+      secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    integration-test-disable-jwt: true
   openai:
     enabled: true
     api-key: test-openai-key

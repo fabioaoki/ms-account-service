@@ -6,8 +6,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class AuthValidationConstants {
 
-    public static final String LOGIN_EMAIL_REGEXP = "(?i)^[^\\s@]+@[a-z0-9.-]+\\.com(\\.br)?$";
+    /**
+     * Permite apenas domínios que terminam em {@code .com} ou {@code .com.br} (inclui subdomínios).
+     */
+    public static final String LOGIN_EMAIL_REGEXP = "^[^@]+@[^@]+\\.(com(\\.br)?)$";
+    public static final String MESSAGE_LOGIN_EMAIL_DOMAIN = "email deve conter um domínio válido (ex.: usuario@dominio.com).";
 
-    public static final String MESSAGE_LOGIN_EMAIL_DOMAIN =
-            "Informe um e-mail valido com dominio terminado em .com ou .com.br.";
+    public static final String MESSAGE_INVALID_CREDENTIALS = "Invalid email or password.";
+    public static final String MESSAGE_ACCESS_DENIED = "You do not have permission to access this resource.";
+    public static final String MESSAGE_UNAUTHORIZED = "Authentication is required.";
 }

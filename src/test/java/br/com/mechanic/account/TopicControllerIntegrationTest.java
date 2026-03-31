@@ -657,7 +657,9 @@ class TopicControllerIntegrationTest {
                 .andExpect(jsonPath("$.context").value("Novo contexto"))
                 .andExpect(jsonPath("$.end_date").value(FIXED_NOW_END_DATE_VALID_AT_MAX))
                 .andExpect(jsonPath("$.profile_type").value(AccountProfileTypeEnum.SPEAKER.name()))
-                .andExpect(jsonPath("$.lastUpdatedAt").exists());
+                .andExpect(jsonPath("$.lastUpdatedAt").exists())
+                .andExpect(jsonPath("$.account_name").doesNotExist())
+                .andExpect(jsonPath("$.topic_annotator_links").doesNotExist());
     }
 
     @Test

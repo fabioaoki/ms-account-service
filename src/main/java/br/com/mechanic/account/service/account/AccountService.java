@@ -26,6 +26,7 @@ import br.com.mechanic.account.service.request.AccountUpdateRequest;
 import br.com.mechanic.account.service.response.AccountDetailResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
+import br.com.mechanic.account.security.ApiAccessValidation;
 import br.com.mechanic.account.service.response.AccountUpdateResponse;
 import br.com.mechanic.account.util.FullNameFormatter;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class AccountService implements AccountServiceBO {
     private final AccountProfileRepositoryImpl accountProfileRepository;
     private final ProfileRepositoryImpl profileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApiAccessValidation apiAccessValidation;
 
     @Override
     @Transactional
@@ -78,6 +80,7 @@ public class AccountService implements AccountServiceBO {
     @Transactional
     public AccountUpdateResponse update(Long accountId, AccountUpdateRequest request) {
         log.info(AccountServiceLogConstants.UPDATE_ACCOUNT_FLOW_STARTED, accountId);
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
 
         boolean hasBirthDate = request.birthDate() != null;
         boolean hasFirstName = request.firstName() != null;
@@ -118,6 +121,7 @@ public class AccountService implements AccountServiceBO {
     @Transactional(readOnly = true)
     public AccountDetailResponse getByAccountId(Long accountId) {
         log.info(AccountServiceLogConstants.GET_ACCOUNT_BY_ID_FLOW_STARTED, accountId);
+        apiAccessValidation.requireReadableAccount(accountId);
         Account account = getAccountOrThrow(accountId);
         List<AccountProfileTypeEnum> profileTypes = accountProfileRepository.findByAccountIdOrderByIdAsc(accountId).stream()
                 .map(ap -> ap.getProfile().getProfileType())
@@ -131,6 +135,7 @@ public class AccountService implements AccountServiceBO {
     @Transactional
     public void deactivateAccount(Long accountId) {
         log.info(AccountServiceLogConstants.DEACTIVATE_ACCOUNT_FLOW_STARTED, accountId);
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         Account account = getAccountOrThrow(accountId);
         if (account.getStatus() == AccountStatusEnum.INACTIVE) {
             log.info(AccountServiceLogConstants.DEACTIVATE_ACCOUNT_IDEMPOTENT_ALREADY_INACTIVE, accountId);
@@ -147,6 +152,7 @@ public class AccountService implements AccountServiceBO {
     @Transactional
     public void activateAccount(Long accountId) {
         log.info(AccountServiceLogConstants.ACTIVATE_ACCOUNT_FLOW_STARTED, accountId);
+        apiAccessValidation.requireOwnerStandardOrFull(accountId);
         Account account = getAccountOrThrow(accountId);
         if (account.getStatus() == AccountStatusEnum.ACTIVE) {
             log.info(AccountServiceLogConstants.ACTIVATE_ACCOUNT_IDEMPOTENT_ALREADY_ACTIVE, accountId);
@@ -167,6 +173,7 @@ public class AccountService implements AccountServiceBO {
                 accountId,
                 request.profileType()
         );
+        apiAccessValidation.requireReadableAccount(accountId);
         Account account = getAccountOrThrow(accountId);
         assertAccountActiveForProfileBinding(
                 account,
@@ -198,6 +205,7 @@ public class AccountService implements AccountServiceBO {
                 accountId,
                 request.profileType()
         );
+        apiAccessValidation.requireReadableAccount(accountId);
         Account account = getAccountOrThrow(accountId);
         assertAccountActiveForProfileBinding(
                 account,

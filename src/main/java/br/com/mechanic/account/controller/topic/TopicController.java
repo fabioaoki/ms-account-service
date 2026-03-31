@@ -1,7 +1,10 @@
 package br.com.mechanic.account.controller.topic;
 
 import br.com.mechanic.account.constant.ApiPathConstants;
+import br.com.mechanic.account.constant.OpenApiOperationDocumentationConstants;
 import br.com.mechanic.account.constant.TopicListQueryConstants;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
 import br.com.mechanic.account.service.annotator.AnnotatorLinkServiceBO;
@@ -14,6 +17,7 @@ import br.com.mechanic.account.service.response.TopicAiReportPageResponse;
 import br.com.mechanic.account.service.response.TopicAiReportResponse;
 import br.com.mechanic.account.service.response.TopicPageResponse;
 import br.com.mechanic.account.service.response.TopicResponse;
+import br.com.mechanic.account.service.response.TopicTableResponse;
 import br.com.mechanic.account.service.topic.TopicAiConsolidationAsyncProcessor;
 import br.com.mechanic.account.service.topic.TopicAiConsolidationServiceBO;
 import br.com.mechanic.account.service.topic.TopicServiceBO;
@@ -38,6 +42,10 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(ApiPathConstants.ACCOUNTS_BASE_PATH)
+@Tag(
+        name = OpenApiOperationDocumentationConstants.Tag.TOPICS_NAME,
+        description = OpenApiOperationDocumentationConstants.Tag.TOPICS_DESCRIPTION
+)
 public class TopicController {
 
     private final TopicServiceBO topicServiceBO;
@@ -48,6 +56,7 @@ public class TopicController {
 
     private final AnnotatorLinkServiceBO annotatorLinkServiceBO;
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Topic.LIST_SUMMARY)
     @GetMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.TOPICS_SEGMENT)
     public ResponseEntity<TopicPageResponse> getAllByAccountId(
             @PathVariable Long accountId,
@@ -61,6 +70,7 @@ public class TopicController {
         return ResponseEntity.ok(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Topic.GET_SUMMARY)
     @GetMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.TOPICS_SEGMENT
@@ -74,6 +84,10 @@ public class TopicController {
         return ResponseEntity.ok(body);
     }
 
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Topic.CREATE_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Topic.CREATE_DESCRIPTION
+    )
     @PostMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.TOPICS_SEGMENT)
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<TopicResponse> create(
@@ -84,20 +98,25 @@ public class TopicController {
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Topic.UPDATE_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Topic.UPDATE_DESCRIPTION
+    )
     @PutMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.TOPICS_SEGMENT
                     + ApiPathConstants.TOPIC_ID_PATH_VARIABLE
     )
-    public ResponseEntity<TopicResponse> update(
+    public ResponseEntity<TopicTableResponse> update(
             @PathVariable Long accountId,
             @PathVariable Long topicId,
             @RequestBody TopicUpdateRequest request
     ) {
-        TopicResponse body = topicServiceBO.update(accountId, topicId, request);
+        TopicTableResponse body = topicServiceBO.update(accountId, topicId, request);
         return ResponseEntity.ok(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Topic.CLOSE_SUMMARY)
     @PatchMapping(ApiPathConstants.ACCOUNT_ID_TOPICS_TOPIC_ID_CLOSE_RELATIVE_PATH)
     public ResponseEntity<TopicResponse> closeTopic(
             @PathVariable Long accountId,
@@ -107,6 +126,10 @@ public class TopicController {
         return ResponseEntity.ok(body);
     }
 
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Topic.AI_CONSOLIDATE_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Topic.AI_CONSOLIDATE_DESCRIPTION
+    )
     @PostMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.TOPICS_SEGMENT
@@ -122,6 +145,7 @@ public class TopicController {
         return ResponseEntity.accepted().build();
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Topic.AI_REPORTS_LIST_SUMMARY)
     @GetMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.TOPICS_SEGMENT
@@ -135,6 +159,7 @@ public class TopicController {
         return ResponseEntity.ok(topicAiConsolidationServiceBO.listReportsByTopic(accountId, topicId));
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Topic.AI_REPORTS_PAGE_SUMMARY)
     @GetMapping(ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE + ApiPathConstants.ACCOUNT_TOPIC_AI_REPORTS_SEGMENT)
     public ResponseEntity<TopicAiReportPageResponse> listAiReportsByOwnerAccount(
             @PathVariable Long accountId,
@@ -146,6 +171,7 @@ public class TopicController {
         return ResponseEntity.ok(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Topic.AI_LATEST_PAYLOAD_SUMMARY)
     @GetMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.TOPICS_SEGMENT
@@ -160,6 +186,7 @@ public class TopicController {
         return ResponseEntity.ok(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Topic.BLOCK_ANNOTATOR_SUMMARY)
     @PostMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.TOPICS_SEGMENT
@@ -176,6 +203,7 @@ public class TopicController {
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
+    @Operation(summary = OpenApiOperationDocumentationConstants.Topic.LIST_BLOCKED_SUMMARY)
     @GetMapping(
             ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
                     + ApiPathConstants.ANNOTATOR_BLOCKS_SEGMENT

@@ -3,6 +3,7 @@ package br.com.mechanic.account.config.security;
 import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.constant.CryptConstants;
 import br.com.mechanic.account.constant.SecurityPathConstants;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -11,6 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -18,96 +20,39 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtAuthenticationConverter jwtAuthenticationConverter,
+            @Value("${app.security.integration-test-disable-jwt:false}") boolean integrationTestDisableJwt
+    ) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        if (integrationTestDisableJwt) {
+            http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+            return http.build();
+        }
+        http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, ApiPathConstants.ACCOUNTS_BASE_PATH).permitAll()
-                        .requestMatchers(HttpMethod.POST, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_PROFILES_ANT_PATTERN)
-                        .permitAll()
-                        .requestMatchers(HttpMethod.POST, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_ANT_PATTERN)
-                        .permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_ANT_PATTERN
+                                ApiPathConstants.AUTH_BASE_PATH + ApiPathConstants.AUTH_LOGIN_SEGMENT
                         )
                         .permitAll()
                         .requestMatchers(
-                                HttpMethod.PUT,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_LINK_RESUME_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANNOTATOR_BLOCKS_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(HttpMethod.PUT, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN)
-                        .permitAll()
-                        .requestMatchers(HttpMethod.PATCH, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_CLOSE_ANT_PATTERN)
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_ANT_PATTERN)
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_ANT_PATTERN)
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_AI_CONSOLIDATION_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_AI_REPORTS_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_AI_REPORT_LATEST_RESPONSE_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPIC_AI_REPORTS_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPIC_ANNOTATOR_LINKS_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_ANNOTATOR_BLOCKS_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_PRESENTATION_SUMMARY_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.PUT,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_PRESENTATION_SUMMARY_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_PRESENTATION_SUMMARY_ANT_PATTERN
-                        )
-                        .permitAll()
-                        .requestMatchers(HttpMethod.DELETE, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_PROFILES_ANT_PATTERN)
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, ApiPathConstants.ACCOUNTS_ACCOUNT_ID_GET_ANT_PATTERN)
-                        .permitAll()
-                        .requestMatchers(HttpMethod.PATCH, ApiPathConstants.ACCOUNTS_WITH_ID_WILDCARD_PATH).permitAll()
-                        .requestMatchers(
+                                SecurityPathConstants.SWAGGER_UI_HTML_PATH,
                                 SecurityPathConstants.SWAGGER_UI_PATTERN,
                                 SecurityPathConstants.API_DOCS_PATTERN,
+                                SecurityPathConstants.WEBJARS_PATTERN,
                                 SecurityPathConstants.ACTUATOR_HEALTH_PATTERN
-                        ).permitAll()
+                        )
+                        .permitAll()
                         .anyRequest().authenticated()
-                );
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(
+                        jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)
+                ));
         return http.build();
     }
 
