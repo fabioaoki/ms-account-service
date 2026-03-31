@@ -2,14 +2,17 @@ package br.com.mechanic.account.controller.account;
 
 import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.service.account.AccountServiceBO;
+import br.com.mechanic.account.service.request.AccountPresentationSummaryUpsertRequest;
 import br.com.mechanic.account.service.request.AccountProfileLinkRequest;
 import br.com.mechanic.account.service.request.AccountProfileUnlinkRequest;
 import br.com.mechanic.account.service.request.AccountUpdateRequest;
 import br.com.mechanic.account.service.request.UserCreateRequest;
 import br.com.mechanic.account.service.response.AccountDetailResponse;
+import br.com.mechanic.account.service.response.AccountPresentationSummaryResponse;
 import br.com.mechanic.account.service.response.AccountProfileLinkResponse;
 import br.com.mechanic.account.service.response.AccountUpdateResponse;
 import br.com.mechanic.account.service.response.AccountResponse;
+import br.com.mechanic.account.service.topic.AccountPresentationSummaryServiceBO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final AccountServiceBO accountServiceBO;
+
+    private final AccountPresentationSummaryServiceBO accountPresentationSummaryServiceBO;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -84,5 +90,41 @@ public class AccountController {
             @Valid @RequestBody AccountProfileUnlinkRequest request
     ) {
         accountServiceBO.unlinkProfileFromAccount(accountId, request);
+    }
+
+    @PostMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.ACCOUNT_PRESENTATION_SUMMARY_SEGMENT
+    )
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<AccountPresentationSummaryResponse> createAccountPresentationSummary(
+            @PathVariable Long accountId,
+            @Valid @RequestBody AccountPresentationSummaryUpsertRequest request
+    ) {
+        AccountPresentationSummaryResponse body = accountPresentationSummaryServiceBO.createSummary(accountId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
+    }
+
+    @PutMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.ACCOUNT_PRESENTATION_SUMMARY_SEGMENT
+    )
+    public ResponseEntity<AccountPresentationSummaryResponse> updateAccountPresentationSummary(
+            @PathVariable Long accountId,
+            @Valid @RequestBody AccountPresentationSummaryUpsertRequest request
+    ) {
+        AccountPresentationSummaryResponse body = accountPresentationSummaryServiceBO.updateSummary(accountId, request);
+        return ResponseEntity.ok(body);
+    }
+
+    @GetMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.ACCOUNT_PRESENTATION_SUMMARY_SEGMENT
+    )
+    public ResponseEntity<AccountPresentationSummaryResponse> getAccountPresentationSummary(
+            @PathVariable Long accountId
+    ) {
+        AccountPresentationSummaryResponse body = accountPresentationSummaryServiceBO.getSummary(accountId);
+        return ResponseEntity.ok(body);
     }
 }

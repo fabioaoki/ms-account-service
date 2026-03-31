@@ -1,5 +1,7 @@
 package br.com.mechanic.account;
 
+import br.com.mechanic.account.constant.AccountPresentationSummaryJsonConstants;
+import br.com.mechanic.account.constant.AccountPresentationSummaryValidationConstants;
 import br.com.mechanic.account.constant.AccountProfileLinkValidationConstants;
 import br.com.mechanic.account.constant.AccountRegistrationValidationConstants;
 import br.com.mechanic.account.constant.ApiPathConstants;
@@ -43,6 +45,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -793,6 +796,124 @@ class AccountControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value(AccountRegistrationValidationConstants.MESSAGE_MAX_AGE_EXCEEDED));
     }
 
+    @Test
+    @DisplayName("POST .../presentation-summary com mais de um profileType retorna 201")
+    void createAccountPresentationSummaryReturnsCreated() throws Exception {
+        Long accountId = createAccountAndGetId(
+                "summary-create-" + UUID.randomUUID() + "@email.com",
+                "Nome",
+                "Resumo",
+                LocalDate.now().minusYears(25)
+        );
+        linkExtraProfile(accountId, AccountProfileTypeEnum.SPEAKER);
+
+        mockMvc.perform(
+                        post(accountPresentationSummaryPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAccountPresentationSummaryJson("Apresentação inicial do usuário."))
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.account_id").value(accountId))
+                .andExpect(jsonPath("$.summary").value("Apresentação inicial do usuário."))
+                .andExpect(jsonPath("$.created_at").exists())
+                .andExpect(jsonPath("$.last_updated_at").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("PUT .../presentation-summary atualiza summary e last_updated_at")
+    void updateAccountPresentationSummaryReturnsOk() throws Exception {
+        Long accountId = createAccountAndGetId(
+                "summary-update-" + UUID.randomUUID() + "@email.com",
+                "Nome",
+                "Resumo",
+                LocalDate.now().minusYears(25)
+        );
+        linkExtraProfile(accountId, AccountProfileTypeEnum.SPEAKER);
+
+        mockMvc.perform(
+                        post(accountPresentationSummaryPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAccountPresentationSummaryJson("Resumo inicial."))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        put(accountPresentationSummaryPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAccountPresentationSummaryJson("Resumo atualizado com mais detalhes."))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.account_id").value(accountId))
+                .andExpect(jsonPath("$.summary").value("Resumo atualizado com mais detalhes."))
+                .andExpect(jsonPath("$.last_updated_at").exists());
+    }
+
+    @Test
+    @DisplayName("GET .../presentation-summary retorna resumo da conta ACTIVE")
+    void getAccountPresentationSummaryReturnsOk() throws Exception {
+        Long accountId = createAccountAndGetId(
+                "summary-get-" + UUID.randomUUID() + "@email.com",
+                "Nome",
+                "Resumo",
+                LocalDate.now().minusYears(25)
+        );
+        linkExtraProfile(accountId, AccountProfileTypeEnum.SPEAKER);
+
+        mockMvc.perform(
+                        post(accountPresentationSummaryPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAccountPresentationSummaryJson("Resumo para leitura."))
+                )
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get(accountPresentationSummaryPath(accountId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.account_id").value(accountId))
+                .andExpect(jsonPath("$.summary").value("Resumo para leitura."));
+    }
+
+    @Test
+    @DisplayName("POST .../presentation-summary com accountId inexistente retorna 400")
+    void createAccountPresentationSummaryWithUnknownAccountReturnsBadRequest() throws Exception {
+        mockMvc.perform(
+                        post(accountPresentationSummaryPath(999999L))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAccountPresentationSummaryJson("Resumo qualquer."))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AccountUpdateValidationConstants.MESSAGE_ACCOUNT_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("POST .../presentation-summary com um único profileType retorna 400")
+    void createAccountPresentationSummaryWithSingleProfileReturnsBadRequest() throws Exception {
+        Long accountId = createAccountAndGetId(
+                "summary-single-profile-" + UUID.randomUUID() + "@email.com",
+                "Nome",
+                "Resumo",
+                LocalDate.now().minusYears(25)
+        );
+
+        mockMvc.perform(
+                        post(accountPresentationSummaryPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAccountPresentationSummaryJson("Resumo sem perfil extra."))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(
+                        AccountPresentationSummaryValidationConstants.MESSAGE_ACCOUNT_MUST_HAVE_MORE_THAN_ONE_PROFILE_TYPE
+                ));
+    }
+
+    private void linkExtraProfile(Long accountId, AccountProfileTypeEnum profileType) throws Exception {
+        mockMvc.perform(
+                        post(accountProfilesPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildLinkProfileJson(profileType))
+                )
+                .andExpect(status().isCreated());
+    }
+
     private Long createAccountAndGetId(String email, String firstName, String lastName, LocalDate birthDate) throws Exception {
         String body = buildJson(email, PASSWORD_VALID, PASSWORD_VALID, firstName, lastName, birthDate.toString());
 
@@ -852,5 +973,25 @@ class AccountControllerIntegrationTest {
         return """
                 {"profileType": "%s"}
                 """.formatted(profileType.name());
+    }
+
+    private static String accountPresentationSummaryPath(Long accountId) {
+        return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.ACCOUNT_PRESENTATION_SUMMARY_SEGMENT;
+    }
+
+    private static String buildAccountPresentationSummaryJson(String summary) {
+        return """
+                {
+                  "%s": "%s"
+                }
+                """
+                .formatted(AccountPresentationSummaryJsonConstants.SUMMARY, escapeJsonForPresentationSummaryBody(summary));
+    }
+
+    private static String escapeJsonForPresentationSummaryBody(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

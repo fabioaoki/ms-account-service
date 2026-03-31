@@ -1,14 +1,14 @@
 {
   "info": {
     "name": "ms-account-service",
-    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos + POST .../topics/{topicId}/annotator-blocks).",
+    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas, perfis e presentation-summary), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos + bloqueios de anotador).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.28.0"
+    "version": "1.30.0"
   },
   "item": [
     {
       "name": "AccountController",
-      "description": "br.com.mechanic.account.controller.account.AccountController — cadastro, consulta, ativacao, atualizacao e vinculo de perfis.",
+      "description": "br.com.mechanic.account.controller.account.AccountController — cadastro, consulta, ativacao, atualizacao, vinculo de perfis e POST/PUT/GET .../presentation-summary (conta ACTIVE; POST/PUT exigem mais de um profileType).",
       "item": [
         {
           "name": "Criar conta (POST /api/v1/accounts)",
@@ -378,6 +378,146 @@
                 "exec": [
                   "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
                   "pm.test('Sem corpo', function () { pm.expect(pm.response.text()).to.eql(''); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar presentation summary (POST /api/v1/accounts/{accountId}/presentation-summary)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/presentation-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts", "{{accountId}}", "presentation-summary"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"summary\": \"{{accountPresentationSummaryText}}\"\n}"
+            },
+            "description": "Cria o resumo/apresentação da conta. Regras: conta ACTIVE e com mais de um profileType."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }",
+                  "if (!pm.collectionVariables.get('accountPresentationSummaryText')) {",
+                  "  pm.collectionVariables.set('accountPresentationSummaryText', 'Resumo longo de apresentação do usuário.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.eql(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Retorno do summary criado', function () {",
+                  "  pm.expect(json.account_id).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.summary).to.eql(pm.collectionVariables.get('accountPresentationSummaryText'));",
+                  "  pm.expect(json.created_at).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar presentation summary (PUT /api/v1/accounts/{accountId}/presentation-summary)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/presentation-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts", "{{accountId}}", "presentation-summary"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"summary\": \"{{accountPresentationSummaryTextUpdated}}\"\n}"
+            },
+            "description": "Atualiza o resumo/apresentação da conta e preenche last_updated_at."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }",
+                  "if (!pm.collectionVariables.get('accountPresentationSummaryTextUpdated')) {",
+                  "  pm.collectionVariables.set('accountPresentationSummaryTextUpdated', 'Resumo atualizado da apresentação.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Retorno do summary atualizado', function () {",
+                  "  pm.expect(json.account_id).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.summary).to.eql(pm.collectionVariables.get('accountPresentationSummaryTextUpdated'));",
+                  "  pm.expect(json.last_updated_at).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obter presentation summary (GET /api/v1/accounts/{accountId}/presentation-summary)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/presentation-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "accounts", "{{accountId}}", "presentation-summary"]
+            },
+            "description": "Retorna o resumo/apresentação da conta ACTIVE."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Retorno do summary', function () {",
+                  "  pm.expect(json.account_id).to.eql(Number(pm.environment.get('accountId')));",
+                  "  pm.expect(json.summary).to.be.a('string');",
+                  "});"
                 ]
               }
             }
@@ -1372,6 +1512,14 @@
     {
       "key": "blockedAccountId",
       "value": "2"
+    },
+    {
+      "key": "accountPresentationSummaryText",
+      "value": "Resumo longo de apresentação do usuário."
+    },
+    {
+      "key": "accountPresentationSummaryTextUpdated",
+      "value": "Resumo atualizado da apresentação."
     },
     {
       "key": "annotatorLinkResumeUpdate",
