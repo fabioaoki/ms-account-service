@@ -2,6 +2,7 @@
 .env.local
 # Segredos e overrides de máquina (copiar de config/application-local.properties.example)
 /config/application-local.properties
+/.vscode/launch.json
 /.idea/
 *.iml
 /.classpath
