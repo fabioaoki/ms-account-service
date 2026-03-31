@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class TopicAiReportRepositoryJpa implements TopicAiReportRepositoryImpl {
@@ -46,5 +47,13 @@ public class TopicAiReportRepositoryJpa implements TopicAiReportRepositoryImpl {
             Pageable pageable
     ) {
         return repository.findByTopicOwnerAccount_IdOrderByCreatedAtDesc(topicOwnerAccountId, pageable);
+    }
+
+    @Override
+    public Optional<TopicAiReport> findLatestByTopicIdAndTopicOwnerAccountId(Long topicId, Long topicOwnerAccountId) {
+        return repository.findTopByTopic_IdAndTopicOwnerAccount_IdOrderByCreatedAtDesc(
+                topicId,
+                topicOwnerAccountId
+        );
     }
 }

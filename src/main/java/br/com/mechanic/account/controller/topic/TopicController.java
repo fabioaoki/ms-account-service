@@ -13,6 +13,7 @@ import br.com.mechanic.account.service.response.TopicResponse;
 import br.com.mechanic.account.service.topic.TopicAiConsolidationAsyncProcessor;
 import br.com.mechanic.account.service.topic.TopicAiConsolidationServiceBO;
 import br.com.mechanic.account.service.topic.TopicServiceBO;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -136,6 +137,20 @@ public class TopicController {
     ) {
         TopicAiReportPageResponse body =
                 topicAiConsolidationServiceBO.listReportsByOwnerAccount(accountId, page, size);
+        return ResponseEntity.ok(body);
+    }
+
+    @GetMapping(
+            ApiPathConstants.ACCOUNT_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPICS_SEGMENT
+                    + ApiPathConstants.TOPIC_ID_PATH_VARIABLE
+                    + ApiPathConstants.TOPIC_AI_REPORT_LATEST_RESPONSE_SEGMENT
+    )
+    public ResponseEntity<JsonNode> getLatestAiReportResponsePayload(
+            @PathVariable Long accountId,
+            @PathVariable Long topicId
+    ) {
+        JsonNode body = topicAiConsolidationServiceBO.getLatestResponsePayload(accountId, topicId);
         return ResponseEntity.ok(body);
     }
 }

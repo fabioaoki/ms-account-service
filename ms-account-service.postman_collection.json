@@ -3,7 +3,7 @@
     "name": "ms-account-service",
     "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas e perfis), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.23.0"
+    "version": "1.24.0"
   },
   "item": [
     {
@@ -597,7 +597,7 @@
     },
     {
       "name": "TopicController",
-      "description": "Conta ACTIVE obrigatoria em GET/POST/PUT/PATCH de topicos.\n\nListagem GET .../topics: page, size; filtros opcionais status e profile_type (snake_case), sozinhos ou em AND. Nao combine status com profile_type=ANNOTATOR (400).\n\nAuditoria topic_history (sem endpoint REST): ao criar topico com status persistido (ex. OPEN), grava-se OPEN; ao fechar (PATCH .../close), grava-se CLOSED com created_at. ANNOTATOR sem status nao gera linha na criacao.\n\nFechar: PATCH .../topics/{topicId}/close — apenas se status atual for OPEN.\n\nOpenAI: POST .../topics/{topicId}/ai-consolidation (sem body) monta o payload a partir do historico de resumos e chama OpenAI no servidor (topicos com workflow: status OPEN); GET .../ai-reports lista relatorios do topico; GET .../topic-ai-reports lista paginada por dono da conta.",
+      "description": "Conta ACTIVE obrigatoria em GET/POST/PUT/PATCH de topicos.\n\nListagem GET .../topics: page, size; filtros opcionais status e profile_type (snake_case), sozinhos ou em AND. Nao combine status com profile_type=ANNOTATOR (400).\n\nAuditoria topic_history (sem endpoint REST): ao criar topico com status persistido (ex. OPEN), grava-se OPEN; ao fechar (PATCH .../close), grava-se CLOSED com created_at. ANNOTATOR sem status nao gera linha na criacao.\n\nFechar: PATCH .../topics/{topicId}/close — apenas se status atual for OPEN.\n\nOpenAI: POST .../topics/{topicId}/ai-consolidation e assincrono (202 Accepted), seta status AI_ANALYSIS_PENDING e processa em background ate AI_REPORT_READY; GET .../ai-reports lista relatorios do topico; GET .../ai-report-latest-response retorna apenas o response_payload mais recente; GET .../topic-ai-reports lista paginada por dono da conta.",
       "item": [
         {
           "name": "Listar topicos (GET /api/v1/accounts/{accountId}/topics)",
@@ -701,7 +701,7 @@
               "mode": "raw",
               "raw": ""
             },
-            "description": "Sem corpo. Servidor: lê topic_annotator_link_history com resume não vazio, chama OpenAI (chat completions ou Assistants conforme app.openai), valida JSON do modelo e persiste topic_ai_report. Requisitos típicos: conta ACTIVE; tópico da conta; perfis com workflow (ex. SPEAKER) devem estar OPEN; deve existir ao menos um resumo; app.openai.enabled e API key no servidor. Resposta 200 TopicAiReportResponse (id, topic_id, request_payload, response_payload, etc.)."
+            "description": "Sem corpo. Servidor: lê topic_annotator_link_history com resume não vazio, inicia pipeline assíncrono de IA e retorna imediatamente. Requisitos típicos: conta ACTIVE; tópico da conta; perfis com workflow (ex. SPEAKER) devem estar OPEN; deve existir ao menos um resumo; app.openai.enabled e API key no servidor. Resposta 202 Accepted (sem corpo)."
           },
           "event": [
             {
@@ -719,14 +719,55 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  const j = pm.response.json();",
-                  "  pm.test('Relatório IA', function () {",
-                  "    pm.expect(j.id).to.be.a('number');",
-                  "    pm.expect(j.topic_id).to.eql(Number(pm.environment.get('topicId')));",
-                  "    pm.expect(j.response_payload).to.be.an('object');",
-                  "  });",
-                  "}"
+                  "pm.test('Status 202', function () { pm.expect(pm.response.code).to.eql(202); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Último response_payload IA (GET .../topics/{topicId}/ai-report-latest-response)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/ai-report-latest-response",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}",
+                "ai-report-latest-response"
+              ]
+            },
+            "description": "Retorna somente o JSON do response_payload do último topic_ai_report para (topicId, accountId do path). Regras: conta ACTIVE e tópico com status AI_REPORT_READY."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('accountId')) { pm.environment.set('accountId', 1); }",
+                  "if (!pm.environment.get('topicId')) { pm.environment.set('topicId', 1); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const payload = pm.response.json();",
+                  "pm.test('Payload IA retornado', function () {",
+                  "  pm.expect(payload).to.be.an('object');",
+                  "  pm.expect(payload.summary).to.be.a('string');",
+                  "  pm.expect(payload.segments).to.be.an('array');",
+                  "});"
                 ]
               }
             }

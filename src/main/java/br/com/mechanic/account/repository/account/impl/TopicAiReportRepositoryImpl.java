@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface TopicAiReportRepositoryImpl {
 
@@ -13,4 +14,6 @@ public interface TopicAiReportRepositoryImpl {
     List<TopicAiReport> findByTopicIdOrderByCreatedAtDesc(Long topicId);
 
     Page<TopicAiReport> findByTopicOwnerAccountIdOrderByCreatedAtDesc(Long topicOwnerAccountId, Pageable pageable);
+
+    Optional<TopicAiReport> findLatestByTopicIdAndTopicOwnerAccountId(Long topicId, Long topicOwnerAccountId);
 }

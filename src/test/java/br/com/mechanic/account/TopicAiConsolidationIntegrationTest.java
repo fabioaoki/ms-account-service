@@ -2,13 +2,14 @@ package br.com.mechanic.account;
 
 import br.com.mechanic.account.constant.AnnotatorLinkJsonConstants;
 import br.com.mechanic.account.constant.ApiPathConstants;
-import br.com.mechanic.account.constant.TopicAiJsonConstants;
 import br.com.mechanic.account.constant.TopicAiModelResponseJsonConstants;
 import br.com.mechanic.account.constant.TopicCreateRequestJsonConstants;
 import br.com.mechanic.account.constant.TopicPaginationConstants;
 import br.com.mechanic.account.constant.TopicValidationConstants;
 import br.com.mechanic.account.enuns.AccountProfileTypeEnum;
 import br.com.mechanic.account.enuns.TopicStatusEnum;
+import br.com.mechanic.account.service.openai.OpenAiAssistantReviewPort;
+import br.com.mechanic.account.service.openai.OpenAiAssistantReviewResult;
 import br.com.mechanic.account.service.openai.OpenAiChatCompletionPort;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -77,6 +78,12 @@ class TopicAiConsolidationIntegrationTest {
         @Primary
         OpenAiChatCompletionPort stubOpenAiChatCompletionPort() {
             return (systemPrompt, userMessageJson) -> MINIMAL_VALID_OPENAI_JSON.trim();
+        }
+
+        @Bean
+        @Primary
+        OpenAiAssistantReviewPort stubOpenAiAssistantReviewPort() {
+            return firstAssistantRawResponseJson -> new OpenAiAssistantReviewResult(true, null);
         }
     }
 
@@ -151,17 +158,9 @@ class TopicAiConsolidationIntegrationTest {
                         post(topicAiConsolidationPath(ownerId, topicId))
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.%s".formatted(TopicAiJsonConstants.TOPIC_ID)).value(topicId))
-                .andExpect(jsonPath("$.%s".formatted(TopicAiJsonConstants.TOPIC_OWNER_ACCOUNT_ID)).value(ownerId))
-                .andExpect(
-                        jsonPath(
-                                "$.%s.%s".formatted(
-                                        TopicAiJsonConstants.RESPONSE_PAYLOAD,
-                                        TopicAiModelResponseJsonConstants.SUMMARY
-                                )
-                        ).value("ok")
-                );
+                .andExpect(status().isAccepted());
+
+        waitForAtLeastOneAiReport(ownerId, topicId);
 
         mockMvc.perform(get(accountTopicItemPath(ownerId, topicId)))
                 .andExpect(status().isOk())
@@ -217,7 +216,7 @@ class TopicAiConsolidationIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(post(topicAiConsolidationPath(ownerId, topicId)).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                .andExpect(status().isAccepted());
 
         String topicJson = mockMvc.perform(get(accountTopicItemPath(ownerId, topicId)))
                 .andExpect(status().isOk())
@@ -226,6 +225,54 @@ class TopicAiConsolidationIntegrationTest {
                 .getContentAsString();
         JsonNode root = objectMapper.readTree(topicJson);
         assertFalse(root.has("status"), "Tópico ANNOTATOR não expõe status após IA");
+    }
+
+    @Test
+    @DisplayName("GET .../ai-report-latest-response retorna response_payload do último relatório")
+    void getLatestAiReportResponsePayloadReturnsLatestReportPayload() throws Exception {
+        Long ownerId = createAccountAndSpeakerTopicSetup();
+        Long annotatorId =
+                createAccountAndGetId("ai-ant-latest-" + UUID.randomUUID() + "@email.com", "Ana", "Nota", LocalDate.now().minusYears(28));
+        long topicId = createSpeakerTopicViaApi(ownerId);
+
+        mockMvc.perform(
+                        post(annotatorLinkPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkJsonAnnotatorOnly(annotatorId))
+                )
+                .andExpect(status().isCreated());
+        mockMvc.perform(
+                        put(annotatorLinkResumePath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(buildAnnotatorLinkResumeJson(annotatorId, "Resumo para latest payload"))
+                )
+                .andExpect(status().isOk());
+        mockMvc.perform(
+                        post(topicAiConsolidationPath(ownerId, topicId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isAccepted());
+
+        waitForAtLeastOneAiReport(ownerId, topicId);
+
+        mockMvc.perform(
+                        get(topicAiLatestResponsePath(ownerId, topicId))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.%s".formatted(TopicAiModelResponseJsonConstants.SUMMARY)).value("ok"));
+    }
+
+    @Test
+    @DisplayName("GET .../ai-report-latest-response com status diferente de AI_REPORT_READY retorna 400")
+    void getLatestAiReportResponsePayloadWhenTopicStatusNotReadyReturnsBadRequest() throws Exception {
+        Long ownerId = createAccountAndSpeakerTopicSetup();
+        long topicId = createSpeakerTopicViaApi(ownerId);
+
+        mockMvc.perform(
+                        get(topicAiLatestResponsePath(ownerId, topicId))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TopicValidationConstants.MESSAGE_TOPIC_STATUS_NOT_READY_FOR_AI_RESPONSE));
     }
 
     private Long createAccountAndSpeakerTopicSetup() throws Exception {
@@ -309,6 +356,10 @@ class TopicAiConsolidationIntegrationTest {
 
     private static String topicAiReportsPath(Long accountId, long topicId) {
         return accountTopicItemPath(accountId, topicId) + ApiPathConstants.TOPIC_AI_REPORTS_SEGMENT;
+    }
+
+    private static String topicAiLatestResponsePath(Long accountId, long topicId) {
+        return accountTopicItemPath(accountId, topicId) + ApiPathConstants.TOPIC_AI_REPORT_LATEST_RESPONSE_SEGMENT;
     }
 
     private static String accountTopicAiReportsPath(Long accountId) {
@@ -437,5 +488,23 @@ class TopicAiConsolidationIntegrationTest {
             return "";
         }
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private void waitForAtLeastOneAiReport(Long ownerId, long topicId) throws Exception {
+        final int maxAttempts = 20;
+        final long sleepMillis = 100L;
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            String reportsJson = mockMvc.perform(get(topicAiReportsPath(ownerId, topicId)))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+            JsonNode reports = objectMapper.readTree(reportsJson);
+            if (reports.isArray() && reports.size() > 0) {
+                return;
+            }
+            Thread.sleep(sleepMillis);
+        }
+        throw new AssertionError("Timed out waiting for async AI report generation.");
     }
 }

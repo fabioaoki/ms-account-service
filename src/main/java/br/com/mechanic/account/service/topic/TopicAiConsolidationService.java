@@ -212,6 +212,23 @@ public class TopicAiConsolidationService implements TopicAiConsolidationServiceB
         );
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public JsonNode getLatestResponsePayload(Long accountId, Long topicId) {
+        getAccountOrThrowAndAssertActive(accountId);
+        Topic topic = getTopicOwnedByAccountOrThrow(topicId, accountId);
+        if (topic.getStatus() != TopicStatusEnum.AI_REPORT_READY) {
+            throw new AccountException(TopicValidationConstants.MESSAGE_TOPIC_STATUS_NOT_READY_FOR_AI_RESPONSE);
+        }
+        TopicAiReport latest = topicAiReportRepository.findLatestByTopicIdAndTopicOwnerAccountId(topicId, accountId)
+                .orElseThrow(() -> new AccountException(TopicValidationConstants.MESSAGE_TOPIC_AI_REPORT_NOT_FOUND));
+        try {
+            return objectMapper.readTree(latest.getResponsePayloadJson());
+        } catch (Exception ex) {
+            throw new AccountException(TopicValidationConstants.MESSAGE_OPENAI_RESPONSE_NOT_VALID_JSON, ex);
+        }
+    }
+
     private static void assertTopicEligibleForAiConsolidation(Topic topic) {
         if (topic.getProfileType() == AccountProfileTypeEnum.ANNOTATOR) {
             return;

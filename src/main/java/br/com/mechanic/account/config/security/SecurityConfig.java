@@ -58,6 +58,11 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
+                                ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPICS_TOPIC_ID_AI_REPORT_LATEST_RESPONSE_ANT_PATTERN
+                        )
+                        .permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
                                 ApiPathConstants.ACCOUNTS_ACCOUNT_ID_TOPIC_AI_REPORTS_ANT_PATTERN
                         )
                         .permitAll()

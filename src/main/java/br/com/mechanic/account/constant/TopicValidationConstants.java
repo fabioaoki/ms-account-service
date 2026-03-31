@@ -100,4 +100,13 @@ public final class TopicValidationConstants {
 
     public static final String MESSAGE_OPENAI_REVIEW_REJECTED_MAX_ATTEMPTS =
             "The review assistant rejected the generated report for the maximum allowed attempts.";
+
+    public static final String MESSAGE_TOPIC_OWNER_ACCOUNT_ID_MISMATCH =
+            "topic_owner_account_id must match accountId in the path.";
+
+    public static final String MESSAGE_TOPIC_STATUS_NOT_READY_FOR_AI_RESPONSE =
+            "Topic AI response is available only when topic status is AI_REPORT_READY.";
+
+    public static final String MESSAGE_TOPIC_AI_REPORT_NOT_FOUND =
+            "No AI report found for the given topic and topic owner account.";
 }
