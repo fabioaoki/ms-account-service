@@ -27,22 +27,25 @@ public final class OpenApiDocumentationConstants {
 
             **Rotas públicas (sem `Authorization`):**
             - `POST /api/v1/accounts` — cadastro
-            - `POST /api/v1/auth/login` — login (email e senha); resposta inclui `access_token` e `authorities`
+            - `POST /api/v1/auth/login` — access + refresh (armazenado no servidor como hash)
+            - `POST /api/v1/auth/refresh` — novo access + rotação do refresh
+            Access: **HS256**, claims `iss`, `aud`, `sub` (UUID público da conta), `account_id`, `roles`, `jti`, sem dados sensíveis.
 
-            **Demais rotas:** envie `Authorization: Bearer <access_token>`.
+            **Demais rotas:** `Authorization: Bearer <access_token>`.
 
-            **Autoridades possíveis no JWT** (refletem o estado da conta no momento do login; faça login novamente após vincular perfis ou abrir tópicos):
+            **Roles no access token** (estado da conta no login/refresh; obtenha novo token após mudar perfis ou tópicos):
             - `OWNER_FULL` — dono com ao menos um tópico próprio em status OPEN (acesso completo ao dono, inclusive IA nos fluxos permitidos)
             - `OWNER_STANDARD` — dono com mais de um perfil em `account_profile` e sem tópico OPEN (tópicos, resumo de apresentação, etc., sem IA)
             - `ANNOTATOR` — papel de anotador (vínculos a tópicos, listagens restritas ao próprio `accountId` quando aplicável)
 
-            Endpoints específicos ainda validam se o `accountId` do path (ou participação em vínculo) bate com o `sub` do JWT e se a autoridade do token permite a operação (403 quando não permitido).
+            Endpoints validam se o `accountId` do path bate com o claim `account_id` do JWT (e regras de vínculo onde aplicável) e se a role permite a operação.
 
             Documentação interativa: `/swagger-ui.html` (redireciona para o Swagger UI). Especificação: `/v3/api-docs`.
             """;
 
     public static final String BEARER_JWT_SCHEME_DESCRIPTION = """
-            Token JWT retornado por `POST /api/v1/auth/login` (campo `access_token`).
-            Tipo: Bearer. Inclua no header `Authorization: Bearer <token>`.
+            Access JWT (HS256) de `POST /api/v1/auth/login` ou `POST /api/v1/auth/refresh` (`access_token`).
+            Validação inclui assinatura, exp, iss e aud. Header: `Authorization: Bearer <access_token>`.
+            Em produção use HTTPS. Cookies HttpOnly/Secure/SameSite=Strict são opcionais no cliente.
             """;
 }

@@ -2,11 +2,13 @@ package br.com.mechanic.account;
 
 import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.constant.AuthJsonConstants;
+import br.com.mechanic.account.constant.AuthJwtConstants;
 import br.com.mechanic.account.constant.AuthTokenConstants;
 import br.com.mechanic.account.constant.SecurityAuthorityConstants;
 import br.com.mechanic.account.security.JwtTestAuthentication;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +57,7 @@ class AuthJwtIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/auth/login retorna JWT com authorities")
+    @DisplayName("POST /api/v1/auth/login retorna access, refresh e authorities")
     void loginReturnsTokenAndAuthorities() throws Exception {
         String email = "jwt-" + UUID.randomUUID() + "@email.com";
         createAccountAndGetId(email);
@@ -71,9 +73,46 @@ class AuthJwtIntegrationTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$." + AuthJsonConstants.ACCESS_TOKEN).isString())
+                .andExpect(jsonPath("$." + AuthJsonConstants.REFRESH_TOKEN).isString())
                 .andExpect(jsonPath("$." + AuthJsonConstants.TOKEN_TYPE).value(AuthTokenConstants.BEARER_TOKEN_TYPE))
+                .andExpect(jsonPath("$." + AuthJsonConstants.EXPIRES_IN_SECONDS)
+                        .value((int) AuthJwtConstants.DEFAULT_ACCESS_TOKEN_EXPIRATION_SECONDS))
+                .andExpect(jsonPath("$." + AuthJsonConstants.REFRESH_EXPIRES_IN_SECONDS)
+                        .value((int) AuthJwtConstants.DEFAULT_REFRESH_TOKEN_EXPIRATION_SECONDS))
                 .andExpect(jsonPath("$." + AuthJsonConstants.AUTHORITIES).isArray())
                 .andExpect(jsonPath("$." + AuthJsonConstants.AUTHORITIES, hasItem(SecurityAuthorityConstants.ANNOTATOR)));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/refresh com refresh válido retorna novo par de tokens")
+    void refreshWithValidTokenReturnsNewTokens() throws Exception {
+        String email = "jwt-refresh-" + UUID.randomUUID() + "@email.com";
+        createAccountAndGetId(email);
+        String loginBody = "{\"email\":\"%s\",\"password\":\"%s\"}".formatted(email, PASSWORD_VALID);
+        String loginResponse = mockMvc.perform(
+                        post(ApiPathConstants.AUTH_BASE_PATH + ApiPathConstants.AUTH_LOGIN_SEGMENT)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(loginBody)
+                )
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String refresh = objectMapper.readTree(loginResponse).get(AuthJsonConstants.REFRESH_TOKEN).asText();
+        ObjectNode refreshPayload = objectMapper.createObjectNode();
+        refreshPayload.put(AuthJsonConstants.REFRESH_TOKEN, refresh);
+        String refreshRequestBody = objectMapper.writeValueAsString(refreshPayload);
+
+        mockMvc.perform(
+                        post(ApiPathConstants.AUTH_BASE_PATH + ApiPathConstants.AUTH_REFRESH_SEGMENT)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(refreshRequestBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$." + AuthJsonConstants.ACCESS_TOKEN).isString())
+                .andExpect(jsonPath("$." + AuthJsonConstants.REFRESH_TOKEN).isString())
+                .andExpect(jsonPath("$." + AuthJsonConstants.EXPIRES_IN_SECONDS)
+                        .value((int) AuthJwtConstants.DEFAULT_ACCESS_TOKEN_EXPIRATION_SECONDS));
     }
 
     @Test

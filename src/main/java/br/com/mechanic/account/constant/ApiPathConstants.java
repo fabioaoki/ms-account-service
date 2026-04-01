@@ -10,6 +10,8 @@ public final class ApiPathConstants {
     public static final String AUTH_SEGMENT = "/auth";
     public static final String AUTH_BASE_PATH = API_V1_PREFIX + AUTH_SEGMENT;
     public static final String AUTH_LOGIN_SEGMENT = "/login";
+
+    public static final String AUTH_REFRESH_SEGMENT = "/refresh";
     public static final String ACCOUNTS_SEGMENT = "/accounts";
     public static final String ACCOUNTS_BASE_PATH = API_V1_PREFIX + ACCOUNTS_SEGMENT;
 

@@ -1,8 +1,8 @@
 package br.com.mechanic.account.service.auth;
 
 import br.com.mechanic.account.config.security.AuthJwtProperties;
-import br.com.mechanic.account.constant.AuthValidationConstants;
 import br.com.mechanic.account.constant.AuthTokenConstants;
+import br.com.mechanic.account.constant.AuthValidationConstants;
 import br.com.mechanic.account.constant.SecurityAuthorityConstants;
 import br.com.mechanic.account.entity.account.Account;
 import br.com.mechanic.account.enuns.AccountStatusEnum;
@@ -12,6 +12,7 @@ import br.com.mechanic.account.repository.account.jpa.AccountRepositoryJpa;
 import br.com.mechanic.account.repository.account.jpa.TopicRepositoryJpa;
 import br.com.mechanic.account.security.TokenService;
 import br.com.mechanic.account.service.request.LoginRequest;
+import br.com.mechanic.account.service.request.RefreshTokenRequest;
 import br.com.mechanic.account.service.response.LoginResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -32,10 +33,11 @@ public class AuthService implements AuthServiceBO {
     private final TopicRepositoryJpa topicRepositoryJpa;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final RefreshTokenService refreshTokenService;
     private final AuthJwtProperties authJwtProperties;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
         Account account = accountRepositoryJpa.findByEmailIgnoreCase(normalizedEmail)
@@ -50,18 +52,52 @@ public class AuthService implements AuthServiceBO {
         }
 
         long accountId = account.getId();
-        long profileCount = accountProfileRepository.countByAccount_Id(accountId);
-        long openTopicCount = topicRepositoryJpa.countByAccount_IdAndStatus(accountId, TopicStatusEnum.OPEN);
-
-        List<String> authorities = buildAuthorities(profileCount, openTopicCount);
-        String token = tokenService.issueAccessToken(accountId, authorities);
+        refreshTokenService.revokeAllActiveForAccount(accountId);
+        List<String> authorities = resolveAuthorities(accountId);
+        String accessToken = tokenService.issueAccessToken(accountId, account.getPublicId(), authorities);
+        String refreshToken = refreshTokenService.issueAndPersist(account);
 
         return new LoginResponse(
-                token,
+                accessToken,
                 AuthTokenConstants.BEARER_TOKEN_TYPE,
-                authJwtProperties.getExpirationSeconds(),
-                List.copyOf(authorities)
+                authJwtProperties.getAccessTokenExpirationSeconds(),
+                List.copyOf(authorities),
+                refreshToken,
+                authJwtProperties.getRefreshTokenExpirationSeconds()
         );
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse refresh(RefreshTokenRequest request) {
+        Account account = refreshTokenService.consumeIfValid(request.refreshToken())
+                .orElseThrow(() ->
+                        new BadCredentialsException(AuthValidationConstants.MESSAGE_INVALID_OR_EXPIRED_REFRESH_TOKEN)
+                );
+
+        if (account.getStatus() != AccountStatusEnum.ACTIVE) {
+            throw new BadCredentialsException(AuthValidationConstants.MESSAGE_INVALID_OR_EXPIRED_REFRESH_TOKEN);
+        }
+
+        long accountId = account.getId();
+        List<String> authorities = resolveAuthorities(accountId);
+        String accessToken = tokenService.issueAccessToken(accountId, account.getPublicId(), authorities);
+        String refreshToken = refreshTokenService.issueAndPersist(account);
+
+        return new LoginResponse(
+                accessToken,
+                AuthTokenConstants.BEARER_TOKEN_TYPE,
+                authJwtProperties.getAccessTokenExpirationSeconds(),
+                List.copyOf(authorities),
+                refreshToken,
+                authJwtProperties.getRefreshTokenExpirationSeconds()
+        );
+    }
+
+    private List<String> resolveAuthorities(long accountId) {
+        long profileCount = accountProfileRepository.countByAccount_Id(accountId);
+        long openTopicCount = topicRepositoryJpa.countByAccount_IdAndStatus(accountId, TopicStatusEnum.OPEN);
+        return buildAuthorities(profileCount, openTopicCount);
     }
 
     private static List<String> buildAuthorities(long profileLinkCount, long openTopicCount) {

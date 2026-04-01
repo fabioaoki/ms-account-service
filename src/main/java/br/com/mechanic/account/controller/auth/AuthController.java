@@ -4,10 +4,11 @@ import br.com.mechanic.account.annotation.PublicEndpoint;
 import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.constant.OpenApiOperationDocumentationConstants;
 import br.com.mechanic.account.service.auth.AuthServiceBO;
+import br.com.mechanic.account.service.request.LoginRequest;
+import br.com.mechanic.account.service.request.RefreshTokenRequest;
+import br.com.mechanic.account.service.response.LoginResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import br.com.mechanic.account.service.request.LoginRequest;
-import br.com.mechanic.account.service.response.LoginResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -35,5 +36,15 @@ public class AuthController {
     @PostMapping(ApiPathConstants.AUTH_LOGIN_SEGMENT)
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authServiceBO.login(request));
+    }
+
+    @PublicEndpoint
+    @Operation(
+            summary = OpenApiOperationDocumentationConstants.Auth.REFRESH_SUMMARY,
+            description = OpenApiOperationDocumentationConstants.Auth.REFRESH_DESCRIPTION
+    )
+    @PostMapping(ApiPathConstants.AUTH_REFRESH_SEGMENT)
+    public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authServiceBO.refresh(request));
     }
 }

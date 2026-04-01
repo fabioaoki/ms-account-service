@@ -40,6 +40,7 @@ import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -68,6 +69,7 @@ public class AccountService implements AccountServiceBO {
         String formattedName = buildFormattedFullName(request);
         AccountModel accountModel = Mapper.toModel(request, normalizedEmail, formattedName, passwordEncoder);
         Account account = Mapper.toEntity(accountModel);
+        account.setPublicId(UUID.randomUUID());
         account.setStatus(AccountStatusEnum.ACTIVE);
         Account saved = accountRepository.save(account);
         accountProfileRepository.save(Mapper.toAccountProfile(saved, initialProfile));

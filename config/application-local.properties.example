@@ -7,6 +7,14 @@ spring.datasource.url=jdbc:postgresql://localhost:5433/annotation_app
 spring.datasource.username=annotation_app
 spring.datasource.password=1234
 
+# JWT HS256: gere um segredo forte (≥32 bytes UTF-8), ex.: openssl rand -base64 48
+# MS_ACCOUNT_JWT_SECRET=...
+# Opcional: iss/aud/TTL (padrões em AuthJwtMetadataConstants / AuthJwtConstants)
+# app.security.jwt.issuer=ms-account-service
+# app.security.jwt.audience=ms-account-api-clients
+# app.security.jwt.access-token-expiration-seconds=900
+# app.security.jwt.refresh-token-expiration-seconds=604800
+
 app.openai.enabled=true
 app.openai.api-key=COLOQUE_SUA_OPENAI_KEY_AQUI
 app.openai.model=gpt-4o-mini

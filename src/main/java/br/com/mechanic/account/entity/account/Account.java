@@ -11,6 +11,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +21,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -35,6 +38,15 @@ public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(
+            name = EntityConstants.COLUMN_ACCOUNT_PUBLIC_ID,
+            nullable = false,
+            unique = true,
+            updatable = false
+    )
+    private UUID publicId;
 
     @Column(name = EntityConstants.COLUMN_EMAIL, nullable = false, length = EntityConstants.EMAIL_COLUMN_LENGTH)
     private String email;

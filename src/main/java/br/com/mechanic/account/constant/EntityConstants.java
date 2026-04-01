@@ -19,6 +19,7 @@ public final class EntityConstants {
     public static final String TOPIC_AI_PROCESSING_ERROR_TABLE_NAME = "topic_ai_processing_error";
     public static final String ACCOUNT_ANNOTATOR_BLOCK_TABLE_NAME = "account_annotator_block";
     public static final String ACCOUNT_PRESENTATION_SUMMARY_TABLE_NAME = "account_presentation_summary";
+    public static final String REFRESH_TOKEN_TABLE_NAME = "refresh_token";
 
     public static final String ACCOUNT_EMAIL_UK = "uk_account_email";
     public static final String PROFILE_TYPE_UK = "uk_profile_type";
@@ -46,6 +47,8 @@ public final class EntityConstants {
     public static final String ACCOUNT_PRESENTATION_SUMMARY_ACCOUNT_FK_NAME = "fk_account_presentation_summary_account";
     public static final String ACCOUNT_PRESENTATION_SUMMARY_ACCOUNT_UK_NAME = "uk_account_presentation_summary_account";
 
+    public static final String REFRESH_TOKEN_ACCOUNT_FK_NAME = "fk_refresh_token_account";
+
     public static final String TOPIC_ANNOTATOR_LINK_TOPIC_ANNOTATOR_UK_NAME = "uk_tal_topic_annotator";
 
     public static final String COLUMN_OPENAI_MODEL = "openai_model";
@@ -64,6 +67,10 @@ public final class EntityConstants {
     public static final String COLUMN_BIRTH_DATE = "birth_date";
     public static final String COLUMN_STATUS = "status";
     public static final String COLUMN_ACCOUNT_ID = "account_id";
+    public static final String COLUMN_ACCOUNT_PUBLIC_ID = "public_id";
+    public static final String COLUMN_TOKEN_HASH = "token_hash";
+    public static final String COLUMN_EXPIRES_AT = "expires_at";
+    public static final String COLUMN_REVOKED_AT = "revoked_at";
     public static final String COLUMN_PROFILE_ID = "profile_id";
     public static final String COLUMN_HISTORY_CREATED_AT = "created_at";
     public static final String COLUMN_ACCOUNT_HISTORY_ACTION = "action";
@@ -97,4 +104,5 @@ public final class EntityConstants {
 
     public static final int TOPIC_AI_PROCESSING_ERROR_TEXT_COLUMN_LENGTH = 4000;
     public static final int ACCOUNT_PRESENTATION_SUMMARY_TEXT_COLUMN_LENGTH = 8000;
+    public static final int REFRESH_TOKEN_HASH_COLUMN_LENGTH = 64;
 }

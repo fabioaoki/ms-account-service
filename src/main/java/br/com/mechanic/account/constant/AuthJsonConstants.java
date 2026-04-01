@@ -10,4 +10,8 @@ public final class AuthJsonConstants {
     public static final String TOKEN_TYPE = "token_type";
     public static final String EXPIRES_IN_SECONDS = "expires_in_seconds";
     public static final String AUTHORITIES = "authorities";
+
+    public static final String REFRESH_TOKEN = "refresh_token";
+
+    public static final String REFRESH_EXPIRES_IN_SECONDS = "refresh_expires_in_seconds";
 }

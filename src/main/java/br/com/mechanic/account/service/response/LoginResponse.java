@@ -16,6 +16,12 @@ public record LoginResponse(
         long expiresInSeconds,
 
         @JsonProperty(AuthJsonConstants.AUTHORITIES)
-        List<String> authorities
+        List<String> authorities,
+
+        @JsonProperty(AuthJsonConstants.REFRESH_TOKEN)
+        String refreshToken,
+
+        @JsonProperty(AuthJsonConstants.REFRESH_EXPIRES_IN_SECONDS)
+        long refreshExpiresInSeconds
 ) {
 }

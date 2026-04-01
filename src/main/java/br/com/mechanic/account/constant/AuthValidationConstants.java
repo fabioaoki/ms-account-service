@@ -13,6 +13,8 @@ public final class AuthValidationConstants {
     public static final String MESSAGE_LOGIN_EMAIL_DOMAIN = "email deve conter um domínio válido (ex.: usuario@dominio.com).";
 
     public static final String MESSAGE_INVALID_CREDENTIALS = "Invalid email or password.";
+
+    public static final String MESSAGE_INVALID_OR_EXPIRED_REFRESH_TOKEN = "Invalid or expired refresh token.";
     public static final String MESSAGE_ACCESS_DENIED = "You do not have permission to access this resource.";
     public static final String MESSAGE_UNAUTHORIZED = "Authentication is required.";
 }

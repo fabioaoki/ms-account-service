@@ -54,13 +54,16 @@ public class OpenApiConfig {
     }
 
     private static String buildApiDescription() {
+        long minutesAccess =
+                AuthJwtConstants.DEFAULT_ACCESS_TOKEN_EXPIRATION_SECONDS / AuthJwtConstants.SECONDS_PER_MINUTE;
+        long daysRefresh =
+                AuthJwtConstants.DEFAULT_REFRESH_TOKEN_EXPIRATION_SECONDS / AuthJwtConstants.SECONDS_PER_DAY;
         return OpenApiDocumentationConstants.API_DESCRIPTION
-                + "\n\n**Validade do access token:** "
-                + AuthJwtConstants.DEFAULT_EXPIRATION_SECONDS
-                + " segundos ("
-                + AuthJwtConstants.ACCESS_TOKEN_TTL_MINUTES
-                + " minutos) por padrão; veja `expires_in_seconds` na resposta do login. "
-                + "Sobrescreva com `MS_ACCOUNT_JWT_EXPIRATION_SECONDS` ou "
-                + "`app.security.jwt.expiration-seconds`.\n";
+                + "\n\n**TTL:** access token ~"
+                + minutesAccess
+                + " min (`expires_in_seconds`); refresh ~"
+                + daysRefresh
+                + " dias (`refresh_expires_in_seconds`). "
+                + "`app.security.jwt.access-token-expiration-seconds` / `refresh-token-expiration-seconds`.\n";
     }
 }

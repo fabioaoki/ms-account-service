@@ -1,11 +1,107 @@
 {
   "info": {
     "name": "ms-account-service",
-    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas, perfis e presentation-summary), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos + bloqueios de anotador).",
+    "description": "Microsservico de contas. Pastas alinhadas aos controllers: AccountController (contas, perfis e presentation-summary), AnnotatorController (POST/PUT vínculo tópico-anotador + GET .../topic-annotator-links), TopicController (topicos + bloqueios de anotador). Autenticação: Bearer JWT na collection (variável accessToken); pasta Auth com Login e Refresh; cadastro de conta permanece sem auth.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.30.0"
+    "version": "1.31.0"
   },
   "item": [
+    {
+      "name": "Auth",
+      "description": "Login e refresh JWT (HS256). Execute Login antes dos endpoints protegidos; os testes gravam accessToken e refreshToken nas variáveis da collection.",
+      "item": [
+        {
+          "name": "Login (POST /api/v1/auth/login)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{passwordValid}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const j = pm.response.json();",
+                  "if (j.access_token) { pm.collectionVariables.set('accessToken', j.access_token); }",
+                  "if (j.refresh_token) { pm.collectionVariables.set('refreshToken', j.refresh_token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh (POST /api/v1/auth/refresh)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const j = pm.response.json();",
+                  "if (j.access_token) { pm.collectionVariables.set('accessToken', j.access_token); }",
+                  "if (j.refresh_token) { pm.collectionVariables.set('refreshToken', j.refresh_token); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
     {
       "name": "AccountController",
       "description": "br.com.mechanic.account.controller.account.AccountController — cadastro, consulta, ativacao, atualizacao, vinculo de perfis e POST/PUT/GET .../presentation-summary (conta ACTIVE; POST/PUT exigem mais de um profileType).",
@@ -34,6 +130,9 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{passwordValid}}\",\n  \"confirmPassword\": \"{{passwordValid}}\",\n  \"firstName\": \"Fabio\",\n  \"lastName\": \"Aoki\",\n  \"birthDate\": \"{{birthDate}}\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -395,8 +494,16 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/presentation-summary",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "accounts", "{{accountId}}", "presentation-summary"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "presentation-summary"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -446,8 +553,16 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/presentation-summary",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "accounts", "{{accountId}}", "presentation-summary"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "presentation-summary"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -492,8 +607,16 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/presentation-summary",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "accounts", "{{accountId}}", "presentation-summary"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "presentation-summary"
+              ]
             },
             "description": "Retorna o resumo/apresentação da conta ACTIVE."
           },
@@ -536,8 +659,16 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{annotatorAccountId}}/topic-annotator-links",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "accounts", "{{annotatorAccountId}}", "topic-annotator-links"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{annotatorAccountId}}",
+                "topic-annotator-links"
+              ],
               "query": [
                 {
                   "key": "topic_id",
@@ -611,7 +742,9 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/annotator-link",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "v1",
@@ -678,7 +811,9 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/annotator-link/resume",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "v1",
@@ -733,7 +868,6 @@
             }
           ]
         }
-
       ]
     },
     {
@@ -747,13 +881,37 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics?page=0&size=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "accounts", "{{accountId}}", "topics"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics"
+              ],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "size", "value": "20" },
-                { "key": "status", "value": "{{topicStatus}}", "description": "Opcional (ex. OPEN). Adicione na URL se precisar.", "disabled": true },
-                { "key": "profile_type", "value": "{{topicProfileType}}", "description": "Opcional (ex. SPEAKER). Adicione na URL; combine com status se quiser AND.", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "{{topicStatus}}",
+                  "description": "Opcional (ex. OPEN). Adicione na URL se precisar.",
+                  "disabled": true
+                },
+                {
+                  "key": "profile_type",
+                  "value": "{{topicProfileType}}",
+                  "description": "Opcional (ex. SPEAKER). Adicione na URL; combine com status se quiser AND.",
+                  "disabled": true
+                }
               ]
             },
             "description": "TopicPageResponse paginado. Ative status e/ou profile_type para filtrar (AND). Nao use status junto com profile_type=ANNOTATOR. Sem filtros: todos os topicos da conta."
@@ -766,8 +924,17 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "accounts", "{{accountId}}", "topics", "{{topicId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}"
+              ]
             },
             "description": "Somente se o topico pertencer ao accountId. Caso contrario 400 (mesma mensagem que topico inexistente)."
           }
@@ -779,8 +946,18 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/close",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "accounts", "{{accountId}}", "topics", "{{topicId}}", "close"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topics",
+                "{{topicId}}",
+                "close"
+              ]
             },
             "description": "Sem body. Requisitos: conta ACTIVE; topico da conta; status atual OPEN (CLOSED/CANCELED/REVIEWED ou sem status tipo ANNOTATOR → 400). Resposta 200 TopicResponse com status CLOSED e lastUpdatedAt. Persiste linha em topic_history (status CLOSED, created_at)."
           },
@@ -827,7 +1004,9 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/ai-consolidation",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "v1",
@@ -878,7 +1057,9 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/annotator-blocks",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "v1",
@@ -932,7 +1113,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/annotator-blocks?page=0&size=20",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "v1",
@@ -941,8 +1124,14 @@
                 "annotator-blocks"
               ],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "size", "value": "20" }
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
               ]
             },
             "description": "Retorna bloqueados pelo dono (accountId do path), com paginação. Resposta: topic_owner_account_id + content[{blocked_account_id, blocked_account_name}] + metadados de página."
@@ -986,7 +1175,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/ai-report-latest-response",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "v1",
@@ -1034,7 +1225,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topics/{{topicId}}/ai-reports",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "api",
                 "v1",
@@ -1067,11 +1260,25 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}/topic-ai-reports?page=0&size=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "accounts", "{{accountId}}", "topic-ai-reports"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{accountId}}",
+                "topic-ai-reports"
+              ],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "size", "value": "20" }
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
               ]
             },
             "description": "Paginação de relatórios em que topic_owner_account_id = accountId do path. Parâmetros opcionais: page, size."
@@ -1524,6 +1731,24 @@
     {
       "key": "annotatorLinkResumeUpdate",
       "value": "Resumo atualizado via PUT resume."
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  }
 }

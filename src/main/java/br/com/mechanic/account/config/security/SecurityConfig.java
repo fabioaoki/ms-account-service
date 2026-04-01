@@ -41,6 +41,11 @@ public class SecurityConfig {
                         )
                         .permitAll()
                         .requestMatchers(
+                                HttpMethod.POST,
+                                ApiPathConstants.AUTH_BASE_PATH + ApiPathConstants.AUTH_REFRESH_SEGMENT
+                        )
+                        .permitAll()
+                        .requestMatchers(
                                 SecurityPathConstants.SWAGGER_UI_HTML_PATH,
                                 SecurityPathConstants.SWAGGER_UI_PATTERN,
                                 SecurityPathConstants.API_DOCS_PATTERN,

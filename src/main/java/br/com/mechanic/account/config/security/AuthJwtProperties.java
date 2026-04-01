@@ -1,8 +1,10 @@
 package br.com.mechanic.account.config.security;
 
 import br.com.mechanic.account.constant.AuthJwtConstants;
+import br.com.mechanic.account.constant.AuthJwtMetadataConstants;
 import br.com.mechanic.account.constant.JwtClaimConstants;
 import jakarta.annotation.PostConstruct;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -18,19 +20,31 @@ import java.nio.charset.StandardCharsets;
 @ConfigurationProperties(prefix = "app.security.jwt")
 public class AuthJwtProperties {
 
-    @NotBlank
     private String secret;
 
-    @Min(60)
-    private long expirationSeconds = AuthJwtConstants.DEFAULT_EXPIRATION_SECONDS;
+    @NotBlank
+    private String issuer = AuthJwtMetadataConstants.DEFAULT_ISSUER;
+
+    @NotBlank
+    private String audience = AuthJwtMetadataConstants.DEFAULT_AUDIENCE;
+
+    @Min(AuthJwtConstants.ACCESS_TOKEN_EXPIRATION_MIN_SECONDS)
+    @Max(AuthJwtConstants.ACCESS_TOKEN_EXPIRATION_MAX_SECONDS)
+    private long accessTokenExpirationSeconds = AuthJwtConstants.DEFAULT_ACCESS_TOKEN_EXPIRATION_SECONDS;
+
+    @Min(3600)
+    private long refreshTokenExpirationSeconds = AuthJwtConstants.DEFAULT_REFRESH_TOKEN_EXPIRATION_SECONDS;
 
     @PostConstruct
     void validateSecretEntropy() {
-        if (secret.getBytes(StandardCharsets.UTF_8).length < JwtClaimConstants.MIN_SECRET_BYTE_LENGTH_HS512) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("app.security.jwt.secret is required (use a random value from the environment).");
+        }
+        if (secret.getBytes(StandardCharsets.UTF_8).length < JwtClaimConstants.MIN_SECRET_BYTE_LENGTH_HMAC_SHA256) {
             throw new IllegalStateException(
                     "app.security.jwt.secret must be at least "
-                            + JwtClaimConstants.MIN_SECRET_BYTE_LENGTH_HS512
-                            + " bytes (UTF-8) for HS512."
+                            + JwtClaimConstants.MIN_SECRET_BYTE_LENGTH_HMAC_SHA256
+                            + " bytes (UTF-8) for HS256. Prefer a random value from the environment (e.g.openssl rand -base64 32)."
             );
         }
     }

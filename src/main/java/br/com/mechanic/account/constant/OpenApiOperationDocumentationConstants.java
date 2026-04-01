@@ -15,15 +15,15 @@ public final class OpenApiOperationDocumentationConstants {
         public static final String AUTH_NAME = "Autenticação";
 
         public static final String AUTH_DESCRIPTION = """
-                Emissão de JWT após validação de email e senha. \
-                Use o `access_token` no botão **Authorize** (Bearer) para as demais operações.""";
+                Login e refresh: access JWT curto (HS256, iss/aud) + refresh persistido (hash no banco). \
+                **Authorize** no Swagger com o `access_token` apenas.""";
 
         public static final String ACCOUNTS_NAME = "Contas";
 
         public static final String ACCOUNTS_DESCRIPTION = """
                 Cadastro público (POST sem token) e gestão da conta autenticada: consulta, ativação, perfis, \
-                resumo de apresentação. O `accountId` do path deve ser o mesmo do subject do JWT, salvo regras \
-                específicas documentadas em cada operação.""";
+                resumo de apresentação. O `accountId` do path deve coincidir com o claim `account_id` do access token, \
+                salvo regras específicas por operação.""";
 
         public static final String TOPICS_NAME = "Tópicos e IA";
 
@@ -44,9 +44,15 @@ public final class OpenApiOperationDocumentationConstants {
         public static final String LOGIN_SUMMARY = "Login (email e senha)";
 
         public static final String LOGIN_DESCRIPTION = """
-                Retorna `access_token` (Bearer), `token_type`, `expires_in_seconds` e `authorities` \
-                (`OWNER_FULL`, `OWNER_STANDARD`, `ANNOTATOR`). Faça login novamente após alterar perfis ou \
-                abrir/fechar tópicos para atualizar as permissões no token.""";
+                Retorna `access_token`, `refresh_token`, `expires_in_seconds`, `refresh_expires_in_seconds`, \
+                `token_type`, `authorities` (espelho das `roles` no JWT). Novo login revoga refresh tokens ativos \
+                da conta. Access: `sub`=UUID público, `account_id`, `roles`, `iss`, `aud`, `jti`. Sem senha no payload.""";
+
+        public static final String REFRESH_SUMMARY = "Renovar access token (refresh token)";
+
+        public static final String REFRESH_DESCRIPTION = """
+                Corpo: `refresh_token`. Rotação: o refresh usado é revogado e um novo par access+refresh é emitido. \
+                Resposta no mesmo formato do login.""";
     }
 
     @NoArgsConstructor(access = AccessLevel.PRIVATE)

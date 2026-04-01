@@ -12,8 +12,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -37,29 +44,52 @@ public class JwtBeansConfig {
     @Bean
     public SecretKey authJwtSecretKey(AuthJwtProperties properties) {
         byte[] keyBytes = properties.getSecret().getBytes(StandardCharsets.UTF_8);
-        return new SecretKeySpec(keyBytes, "HmacSHA512");
+        return new SecretKeySpec(keyBytes, "HmacSHA256");
     }
 
     @Bean
     public JwtEncoder jwtEncoder(SecretKey authJwtSecretKey) {
         OctetSequenceKey jwk = new OctetSequenceKey.Builder(authJwtSecretKey.getEncoded())
                 .keyID(JWT_KEY_ID)
-                .algorithm(JWSAlgorithm.HS512)
+                .algorithm(JWSAlgorithm.HS256)
                 .build();
         JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(new JWKSet(jwk));
         return new NimbusJwtEncoder(jwkSource);
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(SecretKey authJwtSecretKey) {
-        return NimbusJwtDecoder.withSecretKey(authJwtSecretKey).macAlgorithm(MacAlgorithm.HS512).build();
+    public JwtDecoder jwtDecoder(SecretKey authJwtSecretKey, AuthJwtProperties properties) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(authJwtSecretKey)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+        OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(properties.getIssuer());
+        OAuth2TokenValidator<Jwt> audience = audienceValidator(properties.getAudience());
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, audience));
+        return decoder;
+    }
+
+    private static OAuth2TokenValidator<Jwt> audienceValidator(String expectedAudience) {
+        return jwt -> {
+            Object aud = jwt.getClaim(JwtClaimNames.AUD);
+            boolean ok = false;
+            if (aud instanceof String s) {
+                ok = expectedAudience.equals(s);
+            } else if (aud instanceof Collection<?> c) {
+                ok = c.contains(expectedAudience);
+            }
+            if (!ok) {
+                OAuth2Error error = new OAuth2Error(OAuth2ErrorCodes.INVALID_TOKEN, "Invalid audience (aud)", null);
+                return OAuth2TokenValidatorResult.failure(error);
+            }
+            return OAuth2TokenValidatorResult.success();
+        };
     }
 
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(
-                jwt -> authoritiesFromClaim(jwt.getClaimAsStringList(JwtClaimConstants.AUTHORITIES))
+                jwt -> authoritiesFromClaim(jwt.getClaimAsStringList(JwtClaimConstants.ROLES))
         );
         converter.setPrincipalClaimName(JwtClaimNames.SUB);
         return converter;

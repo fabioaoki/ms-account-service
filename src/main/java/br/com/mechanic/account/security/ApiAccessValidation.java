@@ -1,12 +1,14 @@
 package br.com.mechanic.account.security;
 
 import br.com.mechanic.account.constant.AuthValidationConstants;
+import br.com.mechanic.account.constant.JwtClaimConstants;
 import br.com.mechanic.account.constant.SecurityAuthorityConstants;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
@@ -94,14 +96,15 @@ public class ApiAccessValidation {
 
     private static long requireJwtPrincipalAccountId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication instanceof JwtAuthenticationToken) || !authentication.isAuthenticated()) {
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth) || !authentication.isAuthenticated()) {
             throw new AccessDeniedException(AuthValidationConstants.MESSAGE_ACCESS_DENIED);
         }
-        try {
-            return Long.parseLong(authentication.getName());
-        } catch (NumberFormatException ex) {
-            throw new AccessDeniedException(AuthValidationConstants.MESSAGE_ACCESS_DENIED);
+        Jwt jwt = jwtAuth.getToken();
+        Object claim = jwt.getClaim(JwtClaimConstants.ACCOUNT_ID);
+        if (claim instanceof Number n) {
+            return n.longValue();
         }
+        throw new AccessDeniedException(AuthValidationConstants.MESSAGE_ACCESS_DENIED);
     }
 
     private static boolean hasAuthority(String authority) {
