@@ -124,4 +124,12 @@ public final class ApiPathConstants {
 
     public static final String ACCOUNTS_ACCOUNT_ID_TOPIC_AI_REPORTS_ANT_PATTERN =
             ACCOUNTS_BASE_PATH + "/*/topic-ai-reports";
+
+    /**
+     * Colaboração de texto com IA (thread OpenAI). Ex.: {@code /api/v1/accounts/1/text-ai-assistant}.
+     */
+    public static final String TEXT_AI_ASSISTANT_SEGMENT = "/text-ai-assistant";
+
+    public static final String ACCOUNTS_ACCOUNT_ID_TEXT_AI_ASSISTANT_ANT_PATTERN =
+            ACCOUNTS_BASE_PATH + "/*/text-ai-assistant";
 }

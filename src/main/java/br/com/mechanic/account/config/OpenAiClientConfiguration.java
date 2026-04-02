@@ -1,10 +1,13 @@
 package br.com.mechanic.account.config;
 
+import br.com.mechanic.account.service.openai.DisabledOpenAiAssistantThreadTurnClient;
 import br.com.mechanic.account.service.openai.DisabledOpenAiChatCompletionClient;
 import br.com.mechanic.account.service.openai.DisabledOpenAiAssistantReviewClient;
 import br.com.mechanic.account.service.openai.OpenAiAssistantCompletionClient;
 import br.com.mechanic.account.service.openai.OpenAiAssistantReviewClient;
 import br.com.mechanic.account.service.openai.OpenAiAssistantReviewPort;
+import br.com.mechanic.account.service.openai.OpenAiAssistantThreadTurnClient;
+import br.com.mechanic.account.service.openai.OpenAiAssistantThreadTurnPort;
 import br.com.mechanic.account.service.openai.OpenAiChatCompletionClient;
 import br.com.mechanic.account.service.openai.OpenAiChatCompletionPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,5 +54,16 @@ public class OpenAiClientConfiguration {
             return new DisabledOpenAiAssistantReviewClient();
         }
         return new OpenAiAssistantReviewClient(properties, objectMapper);
+    }
+
+    @Bean
+    public OpenAiAssistantThreadTurnPort openAiAssistantThreadTurnPort(
+            OpenAiProperties properties,
+            ObjectMapper objectMapper
+    ) {
+        if (!properties.isEnabled() || !properties.usesAssistantTextAi()) {
+            return new DisabledOpenAiAssistantThreadTurnClient();
+        }
+        return new OpenAiAssistantThreadTurnClient(properties, objectMapper);
     }
 }

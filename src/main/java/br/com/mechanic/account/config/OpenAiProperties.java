@@ -34,6 +34,11 @@ public class OpenAiProperties {
      */
     private String assistantLinguageId = "";
 
+    /**
+     * Assistente OpenAI (Assistants API) para colaboração de texto com thread persistente entre chamadas.
+     */
+    private String assistantTextAiId = "";
+
     private String consolidationSystemPrompt = TopicAiConsolidationPromptDefaults.DEFAULT_SYSTEM_PROMPT;
 
     /**
@@ -60,6 +65,10 @@ public class OpenAiProperties {
 
     public boolean usesAssistantLinguage() {
         return assistantLinguageId != null && !assistantLinguageId.isBlank();
+    }
+
+    public boolean usesAssistantTextAi() {
+        return assistantTextAiId != null && !assistantTextAiId.isBlank();
     }
 
     /**

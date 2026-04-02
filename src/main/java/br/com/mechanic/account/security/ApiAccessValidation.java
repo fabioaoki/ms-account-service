@@ -3,6 +3,9 @@ package br.com.mechanic.account.security;
 import br.com.mechanic.account.constant.AuthValidationConstants;
 import br.com.mechanic.account.constant.JwtClaimConstants;
 import br.com.mechanic.account.constant.SecurityAuthorityConstants;
+import br.com.mechanic.account.constant.TextAiAssistantAccessConstants;
+import br.com.mechanic.account.repository.account.AccountProfileRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -16,7 +19,10 @@ import java.util.Arrays;
 import java.util.stream.Stream;
 
 @Component
+@RequiredArgsConstructor
 public class ApiAccessValidation {
+
+    private final AccountProfileRepository accountProfileRepository;
 
     @Value("${app.security.integration-test-disable-jwt:false}")
     private boolean integrationTestDisableJwt;
@@ -84,6 +90,26 @@ public class ApiAccessValidation {
         boolean asAnnotator = hasAuthority(SecurityAuthorityConstants.ANNOTATOR)
                 && principalId == annotatorAccountIdFromRequest;
         if (!asTopicOwner && !asAnnotator) {
+            throw new AccessDeniedException(AuthValidationConstants.MESSAGE_ACCESS_DENIED);
+        }
+    }
+
+    /**
+     * Colaboração de texto com IA: JWT, path alinhado ao token e pelo menos um dos perfis em
+     * {@link TextAiAssistantAccessConstants#ALLOWED_PROFILE_TYPES}.
+     */
+    public void requireTextAiAssistantAccess(Long accountId) {
+        if (integrationTestDisableJwt) {
+            return;
+        }
+        long principalId = requireJwtPrincipalAccountId();
+        assertPathAccountMatches(principalId, accountId);
+        boolean allowed = TextAiAssistantAccessConstants.ALLOWED_PROFILE_TYPES.stream()
+                .anyMatch(profileType -> accountProfileRepository.existsByAccount_IdAndProfile_ProfileType(
+                        accountId,
+                        profileType
+                ));
+        if (!allowed) {
             throw new AccessDeniedException(AuthValidationConstants.MESSAGE_ACCESS_DENIED);
         }
     }

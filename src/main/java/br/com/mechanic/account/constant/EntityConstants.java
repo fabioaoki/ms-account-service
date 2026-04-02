@@ -20,6 +20,7 @@ public final class EntityConstants {
     public static final String ACCOUNT_ANNOTATOR_BLOCK_TABLE_NAME = "account_annotator_block";
     public static final String ACCOUNT_PRESENTATION_SUMMARY_TABLE_NAME = "account_presentation_summary";
     public static final String REFRESH_TOKEN_TABLE_NAME = "refresh_token";
+    public static final String ACCOUNT_TEXT_AI_SESSION_TABLE_NAME = "account_text_ai_session";
 
     public static final String ACCOUNT_EMAIL_UK = "uk_account_email";
     public static final String PROFILE_TYPE_UK = "uk_profile_type";
@@ -48,6 +49,7 @@ public final class EntityConstants {
     public static final String ACCOUNT_PRESENTATION_SUMMARY_ACCOUNT_UK_NAME = "uk_account_presentation_summary_account";
 
     public static final String REFRESH_TOKEN_ACCOUNT_FK_NAME = "fk_refresh_token_account";
+    public static final String ACCOUNT_TEXT_AI_SESSION_ACCOUNT_FK_NAME = "fk_account_text_ai_session_account";
 
     public static final String TOPIC_ANNOTATOR_LINK_TOPIC_ANNOTATOR_UK_NAME = "uk_tal_topic_annotator";
 
@@ -86,6 +88,10 @@ public final class EntityConstants {
     public static final String COLUMN_BLOCKED_ACCOUNT_ID = "blocked_account_id";
     public static final String COLUMN_TOPIC_ANNOTATOR_LINK_RESUME = "resume";
     public static final String COLUMN_SUMMARY_TEXT = "summary_text";
+    public static final String COLUMN_OPENAI_THREAD_ID = "openai_thread_id";
+    public static final String COLUMN_TIME_CONSIDERED = "time_considered";
+    public static final String COLUMN_EXPECTED_MINUTES = "expected_minutes";
+    public static final String COLUMN_TEXT_AI_SESSION_RESUME = "resume";
     public static final String COLUMN_ANNOTATOR_LINK_ID = "link_id";
 
     public static final int EMAIL_COLUMN_LENGTH = 254;
@@ -105,4 +111,8 @@ public final class EntityConstants {
     public static final int TOPIC_AI_PROCESSING_ERROR_TEXT_COLUMN_LENGTH = 4000;
     public static final int ACCOUNT_PRESENTATION_SUMMARY_TEXT_COLUMN_LENGTH = 8000;
     public static final int REFRESH_TOKEN_HASH_COLUMN_LENGTH = 64;
+
+    public static final int OPENAI_THREAD_ID_COLUMN_LENGTH = 128;
+
+    public static final int TEXT_AI_SESSION_RESUME_TEXT_COLUMN_LENGTH = 16000;
 }

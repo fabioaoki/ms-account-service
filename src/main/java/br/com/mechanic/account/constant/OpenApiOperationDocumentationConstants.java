@@ -36,6 +36,13 @@ public final class OpenApiOperationDocumentationConstants {
         public static final String ANNOTATORS_DESCRIPTION = """
                 Vínculos tópico–anotador e atualização de resumo do vínculo. Participação validada no token \
                 (dono do tópico ou conta anotadora conforme a rota).""";
+
+        public static final String TEXT_AI_ASSISTANT_NAME = "Texto com IA (thread OpenAI)";
+
+        public static final String TEXT_AI_ASSISTANT_DESCRIPTION = """
+                Colaboração em texto (ex.: preparação de palestra) com assistente OpenAI. O `thread_id` na resposta \
+                é o id da thread na API Assistants (histórico de mensagens na OpenAI). Perfis autorizados são \
+                configurados em código (`TextAiAssistantAccessConstants`).""";
     }
 
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -140,5 +147,19 @@ public final class OpenApiOperationDocumentationConstants {
                 Dono do tópico (`OWNER_*`) ou anotador (`ANNOTATOR`) conforme `requireAnnotatorLinkParticipant`.""";
 
         public static final String UPDATE_RESUME_SUMMARY = "Atualizar resumo do vínculo (anotador/dono)";
+    }
+
+    @NoArgsConstructor(access = AccessLevel.PRIVATE)
+    public static final class TextAiAssistant {
+
+        public static final String PROCESS_SUMMARY = "Colaborar em texto com assistente IA (thread OpenAI)";
+
+        public static final String PROCESS_DESCRIPTION = """
+                Requer perfil permitido em `TextAiAssistantAccessConstants` e `app.openai.assistant-text-ai-id` preenchido. \
+                Primeira chamada: omita `thread_id` e envie `title`, `resume`, `time`, `expected` e `chat` (chaves REST em snake_case; `threadId` também é aceito como alias na continuação). \
+                Chamadas seguintes: envie o `thread_id` (ou `threadId`) retornado; `title`, `resume`, `time` e `expected` são opcionais e, se omitidos, reutilizam a sessão persistida. \
+                O payload enviado ao modelo usa camelCase; a resposta REST usa snake_case. \
+                Após a primeira volta, `last_updated_at` só é preenchido nas continuações. \
+                Se o modelo responder `modification=true`, o `resume` persistido é substituído por `allResume`.""";
     }
 }
