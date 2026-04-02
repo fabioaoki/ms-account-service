@@ -14,6 +14,9 @@ public final class TextAiAssistantRequestJsonConstants {
 
     public static final String RESUME_MODIFICATION = "resume_modification";
 
+    /** Alias JSON camelCase aceito na deserialização (equivalente a {@link #RESUME_MODIFICATION}). */
+    public static final String RESUME_MODIFICATION_CAMEL_CASE_ALIAS = "resumeModification";
+
     public static final String TIME = "time";
 
     public static final String EXPECTED = "expected";
