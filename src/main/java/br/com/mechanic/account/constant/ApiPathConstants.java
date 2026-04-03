@@ -130,6 +130,13 @@ public final class ApiPathConstants {
      */
     public static final String TEXT_AI_ASSISTANT_SEGMENT = "/text-ai-assistant";
 
+    /**
+     * Sessões persistidas de colaboração de texto com IA. Ex.: {@code /api/v1/accounts/1/text-ai-assistant/sessions}.
+     */
+    public static final String TEXT_AI_ASSISTANT_SESSIONS_SEGMENT = "/text-ai-assistant/sessions";
+
+    public static final String TEXT_AI_SESSION_ID_PATH_VARIABLE = "/{textAiSessionId}";
+
     public static final String ACCOUNTS_ACCOUNT_ID_TEXT_AI_ASSISTANT_ANT_PATTERN =
             ACCOUNTS_BASE_PATH + "/*/text-ai-assistant";
 }

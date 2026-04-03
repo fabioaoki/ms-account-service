@@ -4,19 +4,19 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * Resposta REST. {@link #THREAD_ID} é o identificador da <strong>thread OpenAI Assistants</strong> (histórico
- * de mensagens no lado da OpenAI), devolvido pela API após criar ou reutilizar a thread.
+ * Resposta REST do {@link br.com.mechanic.account.controller.textai.TextAiAssistantController} (camelCase).
+ * {@link #THREAD_ID} é o identificador da <strong>thread OpenAI Assistants</strong> (histórico no lado OpenAI).
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TextAiAssistantResponseJsonConstants {
 
-    public static final String THREAD_ID = "thread_id";
+    public static final String THREAD_ID = "threadId";
 
     public static final String TITLE = "title";
 
-    public static final String ALL_RESUME = "all_resume";
+    public static final String ALL_RESUME = "allResume";
 
-    public static final String MODIFICATION_RESUME = "modification_resume";
+    public static final String MODIFICATION_RESUME = "modificationResume";
 
     public static final String MODIFICATION = "modification";
 

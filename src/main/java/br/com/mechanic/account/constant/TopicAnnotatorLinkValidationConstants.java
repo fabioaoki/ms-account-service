@@ -21,13 +21,13 @@ public final class TopicAnnotatorLinkValidationConstants {
             "resume exceeds the maximum allowed length (%d characters).";
 
     public static final String MESSAGE_ANNOTATOR_ACCOUNT_ID_REQUIRED =
-            "annotator_account_id is required.";
+            "annotatorAccountId is required.";
 
     public static final String MESSAGE_TOPIC_NOT_FOUND_OR_NOT_OWNED_FOR_LINK =
             "Topic not found or does not belong to this account.";
 
     public static final String MESSAGE_ANNOTATOR_MUST_DIFFER_FROM_TOPIC_OWNER_UNLESS_TOPIC_PROFILE_IS_ANNOTATOR =
-            "annotator_account_id must differ from the topic owner, unless the topic was created with ANNOTATOR profile.";
+            "annotatorAccountId must differ from the topic owner, unless the topic was created with ANNOTATOR profile.";
 
     public static final String MESSAGE_TOPIC_ANNOTATOR_LINK_PAIR_ALREADY_EXISTS =
             "This annotator is already linked to this topic.";
@@ -52,10 +52,10 @@ public final class TopicAnnotatorLinkValidationConstants {
             "No annotator link exists for this topic and annotator account.";
 
     public static final String MESSAGE_BLOCKED_ACCOUNT_ID_REQUIRED =
-            "blocked_account_id is required.";
+            "blockedAccountId is required.";
 
     public static final String MESSAGE_BLOCKED_ACCOUNT_MUST_HAVE_PREVIOUS_PARTICIPATION =
-            "blocked_account_id must have participated in at least one topic created by this account.";
+            "blockedAccountId must have participated in at least one topic created by this account.";
 
     public static final String MESSAGE_BLOCKED_ACCOUNT_ALREADY_BLOCKED =
             "This account has already been blocked by the topic creator.";

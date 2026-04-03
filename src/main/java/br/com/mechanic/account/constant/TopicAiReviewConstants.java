@@ -13,5 +13,5 @@ public final class TopicAiReviewConstants {
     public static final String JSON_PROBLEMATIC_TEXT = "problematic_text";
 
     public static final String DEFAULT_PROBLEMATIC_TEXT_FALLBACK =
-            "Review assistant rejected the response without a problematic_text detail.";
+            "Review assistant rejected the response without a problematicText detail.";
 }

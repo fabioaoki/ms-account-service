@@ -40,9 +40,9 @@ public final class OpenApiOperationDocumentationConstants {
         public static final String TEXT_AI_ASSISTANT_NAME = "Texto com IA (thread OpenAI)";
 
         public static final String TEXT_AI_ASSISTANT_DESCRIPTION = """
-                Colaboração em texto (ex.: preparação de palestra) com assistente OpenAI. O `thread_id` na resposta \
-                é o id da thread na API Assistants (histórico de mensagens na OpenAI). Perfis autorizados são \
-                configurados em código (`TextAiAssistantAccessConstants`).""";
+                Colaboração em texto (ex.: preparação de palestra) com assistente OpenAI. Respostas deste recurso em **camelCase** \
+                (ex.: `threadId` devolvido pelo POST é o id da thread na API Assistants). Perfis autorizados em \
+                `TextAiAssistantAccessConstants`.""";
     }
 
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -156,10 +156,33 @@ public final class OpenApiOperationDocumentationConstants {
 
         public static final String PROCESS_DESCRIPTION = """
                 Requer perfil permitido em `TextAiAssistantAccessConstants` e `app.openai.assistant-text-ai-id` preenchido. \
-                Primeira chamada: omita `thread_id` e envie `title`, `resume`, `time`, `expected` e `chat` (chaves REST em snake_case; `threadId` também é aceito como alias na continuação). \
-                Chamadas seguintes: envie o `thread_id` (ou `threadId`) retornado; `title`, `resume`, `time` e `expected` são opcionais e, se omitidos, reutilizam a sessão persistida. \
-                O payload enviado ao modelo usa camelCase; a resposta REST usa snake_case. \
-                Após a primeira volta, `last_updated_at` só é preenchido nas continuações. \
+                Corpo (request): chaves em snake_case (`thread_id`, etc.) com alias camelCase onde aplicável (`threadId`). \
+                Primeira chamada: omita `thread_id` e envie `title`, `resume`, `time`, `expected` e `chat`. \
+                Chamadas seguintes: envie o `thread_id` retornado; a sessão local já existe — se `is_deleted` for true (soft delete), a continuação falha antes de chamar a OpenAI. \
+                `title`, `resume`, `time` e `expected` são opcionais na continuação e reutilizam a sessão persistida. \
+                **Resposta deste controller:** JSON em **camelCase** (`threadId`, `allResume`, etc.). O payload interno ao modelo continua em camelCase. \
+                Após a primeira volta, `lastUpdatedAt` na entidade só é preenchido nas continuações. \
                 Se o modelo responder `modification=true`, o `resume` persistido é substituído por `allResume`.""";
+
+        public static final String LIST_SESSIONS_SUMMARY = "Listar sessões de texto com IA da conta (paginado)";
+
+        public static final String LIST_SESSIONS_DESCRIPTION = """
+                Requer o mesmo perfil que o POST `text-ai-assistant` (`TextAiAssistantAccessConstants`). \
+                Sessões soft-deleted não entram na lista. \
+                Resposta JSON em camelCase (ex.: `openAiThreadId`, `totalElements`, `createdAt`). \
+                Ordenação: `created_at` na base, descendente, depois `id`. Parâmetros `page` e `size` opcionais (mesmos limites da listagem de tópicos).""";
+
+        public static final String GET_SESSION_BY_ID_SUMMARY = "Obter sessão de texto com IA por id (escopo da conta)";
+
+        public static final String GET_SESSION_BY_ID_DESCRIPTION = """
+                O `textAiSessionId` deve pertencer ao `accountId` do path, não estar removida logicamente e pertencer a uma conta ACTIVE; \
+                caso contrário retorna 400. Corpo em camelCase (ex.: `openAiThreadId`, `lastUpdatedAt`).""";
+
+        public static final String DELETE_SESSION_SUMMARY = "Excluir logicamente sessão de texto com IA (escopo da conta)";
+
+        public static final String DELETE_SESSION_DESCRIPTION = """
+                Requer o mesmo perfil e regras de conta ativa que os GETs de sessões. \
+                Atualiza `last_updated_at`, define `is_deleted` e registra uma linha em `account_text_ai_session_history` \
+                (não remove a linha principal). Repetir a exclusão ou consultar sessão já excluída responde como recurso inexistente para a conta.""";
     }
 }

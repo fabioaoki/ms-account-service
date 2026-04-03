@@ -8,7 +8,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Corpo REST: chaves em snake_case ({@code thread_id}, etc.). Alias {@code threadId} para o id da thread.
+ * Corpo REST (request): chaves em snake_case ({@code thread_id}, etc.). Alias {@code threadId} para o id da thread.
+ * Respostas do {@link br.com.mechanic.account.controller.textai.TextAiAssistantController} usam camelCase ({@code threadId}, {@code allResume}, …).
  * Primeira interação: omita {@code thread_id} e envie {@code title}, {@code resume}, {@code time}, {@code expected}.
  * Continuação: pode enviar só {@code thread_id}/{@code threadId} e {@code chat}; os demais campos são opcionais e
  * reutilizam os valores persistidos na sessão (exceto {@code resume_modification}, que não é persistido: envie a cada

@@ -68,4 +68,10 @@ public class AccountTextAiSession {
 
     @Column(name = EntityConstants.COLUMN_LAST_UPDATED_AT)
     private LocalDateTime lastUpdatedAt;
+
+    /**
+     * {@code null}: sessão ativa; {@code true}: removida logicamente (não entra em GETs).
+     */
+    @Column(name = EntityConstants.COLUMN_IS_DELETED)
+    private Boolean isDeleted;
 }

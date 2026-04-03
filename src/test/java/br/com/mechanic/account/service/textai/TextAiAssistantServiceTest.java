@@ -209,6 +209,47 @@ class TextAiAssistantServiceTest {
     }
 
     @Test
+    @DisplayName("Segunda volta: sessão com isDeleted=true não chama o assistente")
+    void continuingTurnWhenSessionSoftDeletedDoesNotCallAssistant() {
+        long accountId = 12L;
+        Account account = Account.builder()
+                .id(accountId)
+                .publicId(UUID.randomUUID())
+                .status(AccountStatusEnum.ACTIVE)
+                .build();
+        when(accountRepositoryJpa.findById(accountId)).thenReturn(Optional.of(account));
+
+        AccountTextAiSession session = AccountTextAiSession.builder()
+                .id(600L)
+                .account(account)
+                .openAiThreadId("thread_removed")
+                .title("T")
+                .resume("R")
+                .timeConsidered(false)
+                .expectedMinutes(10)
+                .createdAt(LocalDateTime.now(clock))
+                .lastUpdatedAt(null)
+                .isDeleted(Boolean.TRUE)
+                .build();
+        when(sessionRepositoryJpa.findByAccount_IdAndOpenAiThreadId(accountId, "thread_removed"))
+                .thenReturn(Optional.of(session));
+
+        TextAiAssistantRequest req = new TextAiAssistantRequest(
+                "thread_removed",
+                null,
+                null,
+                null,
+                null,
+                null,
+                "Olá"
+        );
+
+        AccountException ex = assertThrows(AccountException.class, () -> service.process(accountId, req));
+        assertEquals(TextAiAssistantValidationConstants.MESSAGE_TEXT_AI_SESSION_DELETED_CANNOT_CALL_ASSISTANT, ex.getMessage());
+        verify(openAiAssistantThreadTurnPort, never()).runTurn(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("Assistente não configurado: lança exceção")
     void whenTextAiAssistantNotConfiguredThrows() {
         when(openAiProperties.usesAssistantTextAi()).thenReturn(false);

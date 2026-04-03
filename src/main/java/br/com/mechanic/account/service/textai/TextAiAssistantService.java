@@ -94,11 +94,15 @@ public class TextAiAssistantService implements TextAiAssistantServiceBO {
         return toApiResponse(turn.openAiThreadId(), parsed);
     }
 
+    /**
+     * Volta seguinte: o pedido inclui {@code thread_id} (id da thread na OpenAI), portanto a sessão local já foi
+     * criada na primeira volta e tem {@link AccountTextAiSession#getId() textAiSessionId} e
+     * {@link AccountTextAiSession#getOpenAiThreadId() openai_thread_id} persistidos. Na primeira interação esse
+     * id ainda não existe — a validação abaixo só corre neste ramo.
+     */
     private TextAiAssistantResponse processContinuingTurn(Account account, TextAiAssistantRequest request) {
         String openAiThreadId = request.threadId().trim();
-        AccountTextAiSession session = sessionRepositoryJpa
-                .findByAccount_IdAndOpenAiThreadId(account.getId(), openAiThreadId)
-                .orElseThrow(() -> new AccountException(TextAiAssistantValidationConstants.MESSAGE_SESSION_NOT_FOUND_FOR_THREAD));
+        AccountTextAiSession session = loadPersistedSessionForContinuingOpenAiTurnOrThrow(account.getId(), openAiThreadId);
 
         applyOptionalSessionUpdatesFromRequest(session, request);
         session.setLastUpdatedAt(LocalDateTime.now(clock));
@@ -126,6 +130,23 @@ public class TextAiAssistantService implements TextAiAssistantServiceBO {
         sessionRepositoryJpa.save(session);
 
         return toApiResponse(turn.openAiThreadId(), parsed);
+    }
+
+    /**
+     * Resolve a sessão pela combinação conta + {@code openAiThreadId} e impede continuidade quando
+     * {@link AccountTextAiSession#getIsDeleted()} é true, antes de qualquer chamada ao assistente.
+     */
+    private AccountTextAiSession loadPersistedSessionForContinuingOpenAiTurnOrThrow(
+            Long accountId,
+            String openAiThreadId
+    ) {
+        AccountTextAiSession session = sessionRepositoryJpa
+                .findByAccount_IdAndOpenAiThreadId(accountId, openAiThreadId)
+                .orElseThrow(() -> new AccountException(TextAiAssistantValidationConstants.MESSAGE_SESSION_NOT_FOUND_FOR_THREAD));
+        if (Boolean.TRUE.equals(session.getIsDeleted())) {
+            throw new AccountException(TextAiAssistantValidationConstants.MESSAGE_TEXT_AI_SESSION_DELETED_CANNOT_CALL_ASSISTANT);
+        }
+        return session;
     }
 
     private static TextAiAssistantResponse toApiResponse(

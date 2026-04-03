@@ -3,6 +3,7 @@ package br.com.mechanic.account;
 import br.com.mechanic.account.constant.ApiPathConstants;
 import br.com.mechanic.account.constant.TextAiAssistantRequestJsonConstants;
 import br.com.mechanic.account.constant.TextAiAssistantResponseJsonConstants;
+import br.com.mechanic.account.constant.TextAiAssistantValidationConstants;
 import br.com.mechanic.account.repository.textai.jpa.AccountTextAiSessionRepositoryJpa;
 import br.com.mechanic.account.service.openai.OpenAiAssistantThreadTurnPort;
 import br.com.mechanic.account.service.openai.OpenAiAssistantThreadTurnResult;
@@ -28,6 +29,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -139,10 +141,68 @@ class TextAiAssistantIntegrationTest {
                 .andExpect(jsonPath("$." + TextAiAssistantResponseJsonConstants.MODIFICATION).value(false));
 
         var sessionAfterSecond = sessionRepositoryJpa
-                .findByAccount_IdAndOpenAiThreadId(accountId, STUB_THREAD)
+                .findByAccount_IdAndOpenAiThreadIdAndIsDeletedIsNull(accountId, STUB_THREAD)
                 .orElseThrow();
         assertEquals("Texto consolidado pela IA", sessionAfterSecond.getResume());
         assertNotNull(sessionAfterSecond.getLastUpdatedAt());
+    }
+
+    @Test
+    @DisplayName("POST text-ai-assistant com thread_id após soft-delete da sessão: 400 e sem chamada útil ao stub OpenAI")
+    void continuingTurnAfterSessionSoftDeleteRejected() throws Exception {
+        String email = "text-ai-del-" + UUID.randomUUID() + "@email.com";
+        Long accountId = createAccountAndGetId(email);
+        linkProfileForTextAiAccess(accountId);
+
+        String firstBody = """
+                {
+                  "%s": "Título",
+                  "%s": "Resumo",
+                  "%s": null,
+                  "%s": true,
+                  "%s": 30,
+                  "%s": "Olá"
+                }
+                """
+                .formatted(
+                        TextAiAssistantRequestJsonConstants.TITLE,
+                        TextAiAssistantRequestJsonConstants.RESUME,
+                        TextAiAssistantRequestJsonConstants.RESUME_MODIFICATION,
+                        TextAiAssistantRequestJsonConstants.TIME,
+                        TextAiAssistantRequestJsonConstants.EXPECTED,
+                        TextAiAssistantRequestJsonConstants.CHAT
+                );
+
+        mockMvc.perform(
+                        post(textAiPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(firstBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$." + TextAiAssistantResponseJsonConstants.THREAD_ID).value(STUB_THREAD));
+
+        var sessionRow = sessionRepositoryJpa
+                .findByAccount_IdAndOpenAiThreadIdAndIsDeletedIsNull(accountId, STUB_THREAD)
+                .orElseThrow();
+
+        mockMvc.perform(delete(textAiSessionPath(accountId, sessionRow.getId())))
+                .andExpect(status().isNoContent());
+
+        String continueBody = """
+                {
+                  "threadId": "%s",
+                  "chat": "Ainda posso usar?"
+                }
+                """
+                .formatted(STUB_THREAD);
+
+        mockMvc.perform(
+                        post(textAiPath(accountId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(continueBody)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(TextAiAssistantValidationConstants.MESSAGE_TEXT_AI_SESSION_DELETED_CANNOT_CALL_ASSISTANT));
     }
 
     /** Hoje {@code TextAiAssistantAccessConstants} inclui BISHOP; ajuste o perfil se expandir a lista. */
@@ -181,5 +241,14 @@ class TextAiAssistantIntegrationTest {
 
     private static String textAiPath(Long accountId) {
         return ApiPathConstants.ACCOUNTS_BASE_PATH + "/" + accountId + ApiPathConstants.TEXT_AI_ASSISTANT_SEGMENT;
+    }
+
+    private static String textAiSessionPath(Long accountId, Long sessionId) {
+        return ApiPathConstants.ACCOUNTS_BASE_PATH
+                + "/"
+                + accountId
+                + ApiPathConstants.TEXT_AI_ASSISTANT_SESSIONS_SEGMENT
+                + "/"
+                + sessionId;
     }
 }

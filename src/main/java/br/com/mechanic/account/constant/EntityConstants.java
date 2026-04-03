@@ -22,6 +22,8 @@ public final class EntityConstants {
     public static final String REFRESH_TOKEN_TABLE_NAME = "refresh_token";
     public static final String ACCOUNT_TEXT_AI_SESSION_TABLE_NAME = "account_text_ai_session";
 
+    public static final String ACCOUNT_TEXT_AI_SESSION_HISTORY_TABLE_NAME = "account_text_ai_session_history";
+
     public static final String ACCOUNT_EMAIL_UK = "uk_account_email";
     public static final String PROFILE_TYPE_UK = "uk_profile_type";
 
@@ -50,6 +52,14 @@ public final class EntityConstants {
 
     public static final String REFRESH_TOKEN_ACCOUNT_FK_NAME = "fk_refresh_token_account";
     public static final String ACCOUNT_TEXT_AI_SESSION_ACCOUNT_FK_NAME = "fk_account_text_ai_session_account";
+
+    public static final String ACCOUNT_TEXT_AI_SESSION_HISTORY_SESSION_FK_NAME =
+            "fk_account_text_ai_session_history_session";
+
+    public static final String ACCOUNT_TEXT_AI_SESSION_HISTORY_ACCOUNT_FK_NAME =
+            "fk_account_text_ai_session_history_account";
+
+    public static final String ACCOUNT_TEXT_AI_SESSION_HISTORY_SESSION_IDX_NAME = "idx_account_text_ai_session_hist_sess";
 
     public static final String TOPIC_ANNOTATOR_LINK_TOPIC_ANNOTATOR_UK_NAME = "uk_tal_topic_annotator";
 
@@ -92,6 +102,10 @@ public final class EntityConstants {
     public static final String COLUMN_TIME_CONSIDERED = "time_considered";
     public static final String COLUMN_EXPECTED_MINUTES = "expected_minutes";
     public static final String COLUMN_TEXT_AI_SESSION_RESUME = "resume";
+
+    public static final String COLUMN_TEXT_AI_SESSION_ID = "text_ai_session_id";
+
+    public static final String COLUMN_IS_DELETED = "is_deleted";
     public static final String COLUMN_ANNOTATOR_LINK_ID = "link_id";
 
     public static final int EMAIL_COLUMN_LENGTH = 254;
